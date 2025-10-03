@@ -8,6 +8,12 @@ variables:
     pic: "X(10)"
     description: "Demo variable"
 
+conditions:
+  demo_condition:
+    check: "DEMO-VAR is defined"
+    description: "Check DEMO-VAR variable"
+    logic: "DEMO-VAR must be present"
+
 requirements:
   demo_requirement:
     description: "Demo variable must be present"
@@ -18,3 +24,13 @@ requirements:
 compliant_logic:
   demo_logic:
     - "MOVE 'DEMO' TO DEMO-VAR"
+
+violation_examples:
+  - description: "DEMO-VAR variable missing"
+    code: |
+      IDENTIFICATION DIVISION.
+      PROGRAM-ID. BAD-DEMO.
+      DATA DIVISION.
+      PROCEDURE DIVISION.
+      DISPLAY 'No DEMO-VAR defined'.
+      STOP RUN.

@@ -227,8 +227,8 @@ variables:
             rule_content += f"    description: \"Check {rule_data['variables'][0]} variable\"\n\n"
             
             rule_content += "requirements:\n"
-            for i, req in enumerate(rule_data["requirements"]):
-                rule_content += f"  {rule_data['name'].lower().replace(' ', '_')}_req_{i+1}:\n"
+            for j, req in enumerate(rule_data["requirements"]):
+                rule_content += f"  {rule_data['name'].lower().replace(' ', '_')}_req_{j+1}:\n"
                 rule_content += f"    description: \"{req}\"\n"
                 rule_content += f"    check: \"{rule_data['variables'][0]} variable must be defined\"\n"
                 rule_content += f"    violation_message: \"{rule_data['variables'][0]} variable not defined\"\n"
@@ -239,9 +239,12 @@ variables:
             rule_content += f"    - \"DISPLAY '{rule_data['name']} Logic Executed'\"\n"
             
             rule_content += "\nviolation_examples:\n"
-            rule_content += f"  missing_{rule_data['variables'][0].lower().replace('-', '_')}:\n"
-            rule_content += f"    description: \"{rule_data['variables'][0]} variable missing\"\n"
-            rule_content += f"    remove_variables: [\"{rule_data['variables'][0]}\"]\n"
+            rule_content += f"  - description: \"{rule_data['variables'][0]} variable missing\"\n"
+            rule_content += f"    code: |\n"
+            rule_content += f"      IDENTIFICATION DIVISION.\n"
+            rule_content += f"      PROGRAM-ID. TEST.\n"
+            rule_content += f"      PROCEDURE DIVISION.\n"
+            rule_content += f"      STOP RUN.\n"
             
             rule_file = self.rules_dir / f"rule_{i+1}.dsl"
             rule_file.write_text(rule_content.strip())

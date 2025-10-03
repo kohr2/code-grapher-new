@@ -169,17 +169,17 @@ class TestCOBOLCSTParser(unittest.TestCase):
         self.assertGreater(len(variables), 0)
         
         # Check for hierarchical structure
-        variable_names = [var['name'] for var in variables]
+        variable_names = [var.name for var in variables]
         self.assertIn('CUSTOMER-RECORD', variable_names)
         self.assertIn('ACCOUNT-INFO', variable_names)
         self.assertIn('CUST-ID', variable_names)
         
         # Check for level relationships
         for var in variables:
-            if var['name'] == 'ACCOUNT-INFO':
-                self.assertEqual(var['level'], '02')
-                self.assertIn('parent', var)
-                self.assertEqual(var['parent'], 'CUSTOMER-RECORD')
+            if var.name == 'ACCOUNT-INFO':
+                self.assertEqual(var.level, '02')
+                self.assertIsNotNone(var.parent)
+                self.assertEqual(var.parent, 'CUSTOMER-RECORD')
 
     def test_extract_procedures(self):
         """Test extracting procedures and paragraphs"""
