@@ -1,0 +1,233 @@
+# Stacktalk Demo - 5 Minute Quickstart
+
+Get Stacktalk running in 5 minutes and see DSL-driven policy violations in action.
+
+## Step 1: Setup (2 minutes)
+
+```bash
+# Create and enter project directory
+mkdir stacktalk-demo
+cd stacktalk-demo
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Download all files to this directory
+# (You should have: main.py, src/*.py modules, rules/*.dsl files, requirements.txt)
+# 
+# NOTE: This is a template - you need to create the actual implementation files
+# based on the modular architecture described in this quickstart
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+## Step 2: Verify Installation (30 seconds)
+
+```bash
+python main.py --validate
+```
+
+You should see:
+```
+✅ DSL validation passed! Stacktalk is ready to use.
+📋 Loaded rule: NSF Banking Rule
+   Variables: 4
+   Requirements: 3
+```
+
+If you see errors, check that:
+- Python 3.10+ is installed: `python --version`
+- All modular files are in the correct structure
+- Virtual environment is activated
+- DSL rule files are present in `rules/` directory
+
+## Step 3: Run the Demo (1 minute)
+
+```bash
+python main.py
+```
+
+This will:
+1. ✅ Parse DSL rules from `rules/*.dsl` files
+2. ✅ Generate graph from DSL rules (variables, requirements, logic)
+3. ✅ Parse COBOL code into graph (programs, variables, procedures)
+4. ✅ Connect every code element to applicable DSL rules
+5. ✅ Analyze graph for policy violations
+6. ✅ Generate HTML report
+
+## Step 4: View Results (1 minute)
+
+### In Terminal
+
+You'll see output like:
+
+```
+🏦 Stacktalk MVP: DSL-Driven Financial Rule Detection
+============================================================
+📋 Loaded rule: NSF Banking Rule (4 variables, 3 requirements)
+✅ Generated graph from DSL rules
+✅ Parsed COBOL code into graph
+✅ Connected code elements to DSL rules
+🔍 Analyzing graph for violations...
+   ❌ Found 3 violations in violation.cob
+   ✅ No violations in compliant.cob
+
+📊 Graph Statistics: 15 nodes, 12 edges, 50% compliance
+✅ Graph saved: output/graph.json
+✅ Report generated: output/report.html
+```
+
+### In Browser
+
+Open `output/report.html` to see:
+- Executive summary dashboard
+- Detailed violation reports with syntax highlighting
+- Graph statistics and compliance metrics
+- **Code-to-rule connections** showing which DSL rules apply to each code element
+- Audit-ready formatting
+
+## Step 5: Customize Rules (1 minute)
+
+```bash
+# Modify NSF rule
+vim rules/nsf_rule.dsl
+
+# Run with your changes
+python main.py
+
+# View graph data
+cat output/graph.json
+
+# Graph shows comprehensive connections:
+# - DSL Rule nodes → Variable nodes → Requirement nodes
+# - COBOL Program nodes → Variable nodes → Procedure nodes  
+# - Code variables connected to DSL rule variables
+# - Violations linked to specific code elements and rules
+```
+
+## What Stacktalk Detects
+
+**NSF Banking Rule**: NSF events must be logged and fee applied
+- ❌ Violation: Missing NSF-LOG-FLAG variable
+- ✅ Compliant: NSF logging + fee application
+
+**Dual Approval Rule**: Payments >$10K require two approvers  
+- ❌ Violation: Only checks one approver
+- ✅ Compliant: Validates both APPROVER-ID and APPROVER-2-ID
+
+## Graph Connectivity
+
+The graph creates **comprehensive connections** between DSL rules and code:
+
+```
+DSL Rule "NSF Banking Rule"
+├── Variable: NSF-LOG-FLAG
+├── Variable: NSF-FEE  
+├── Requirement: nsf_logging
+└── Requirement: nsf_fee_application
+
+COBOL Program "WITHDRAWAL-PROCESS"  
+├── Variable: NSF-LOG-FLAG ← Connected to DSL rule variable
+├── Variable: NSF-FEE ← Connected to DSL rule variable
+├── Procedure: PROCESS-NSF ← Connected to DSL requirements
+└── Violation: Missing logging ← Linked to specific requirement
+```
+
+**Every code element** is mapped to its corresponding DSL rule components, enabling:
+- **Precise violation detection** (know exactly which rule is violated)
+- **Impact analysis** (see what code changes affect which rules)
+- **Compliance tracing** (track rule compliance across codebase)
+
+## Common Issues
+
+**Missing dependencies**: `pip install pyyaml jinja2 rich`
+
+**DSL validation error**: Check YAML syntax in `rules/*.dsl`
+
+**No violations detected**: Modify DSL file to match your code patterns
+
+## Sales Demo (10 minutes)
+
+**Problem** (2 min): COBOL code drifts from documented policies → audit risk
+
+**DSL Demo** (3 min): `vim rules/nsf_rule.dsl` → modify fee → `python main.py`
+
+**Results** (3 min): Terminal violations + HTML report + graph data
+
+**Close** (2 min): "Want to see your production code? 90-day pilot: $75K"
+
+## Next Steps
+
+**Development**: Add DSL rules → enhance graph analysis → improve reports
+
+**Production**: Handle COPY statements → multiple COBOL dialects → Neo4j integration
+
+**Sales**: Get 3 design partners → customize rules → generate case studies
+
+## Directory Structure
+
+```
+stacktalk-demo/
+├── main.py                    # Main orchestration script
+├── requirements.txt           # Python dependencies
+├── src/                       # Source modules
+│   ├── dsl_parser.py         # DSL rule parsing
+│   ├── cobol_generator.py    # COBOL code generation
+│   ├── rule_detector.py      # Rule violation detection
+│   ├── graph_generator.py    # Graph database operations
+│   └── report_generator.py   # HTML report generation
+├── rules/                     # DSL rule definitions
+│   ├── nsf_rule.dsl          # NSF banking rule
+│   └── dual_approval.dsl     # Dual approval rule
+├── examples/                  # Generated COBOL examples
+│   ├── compliant.cob
+│   └── violation.cob
+└── output/                    # Generated outputs
+    ├── graph.json            # Graph representation
+    └── report.html           # Compliance report
+```
+
+## File Checklist
+
+**Required Files** (create these based on the architecture):
+```
+✅ main.py                - Main orchestration script
+✅ src/dsl_parser.py      - DSL rule parsing
+✅ src/cobol_generator.py - COBOL code generation  
+✅ src/rule_detector.py   - Rule violation detection
+✅ src/graph_generator.py - Graph database operations
+✅ src/report_generator.py - HTML report generation
+✅ rules/nsf_rule.dsl     - NSF banking rule definition
+✅ rules/dual_approval.dsl - Dual approval rule definition
+✅ requirements.txt       - Python dependencies (✅ exists)
+```
+
+**Current Status**: Only `requirements.txt` exists. Create the other files using the modular architecture described above.
+
+## Success Checklist
+
+**Once you create the implementation files:**
+- ✅ Run `python main.py` successfully
+- ✅ See violations detected from DSL rules  
+- ✅ View graph data in `output/graph.json`
+- ✅ Modify `rules/*.dsl` files and see changes
+
+**Current Status**: This is a **template/blueprint**. You need to implement the actual code files based on the architecture described.
+
+## Architecture Benefits
+
+✅ **DSL-Driven**: Rules in YAML, not hardcoded  
+✅ **Graph-Enabled**: Rich data representation with **complete code-to-rule mapping**  
+✅ **Modular**: Independent components  
+✅ **Business-Friendly**: Non-technical users can modify rules
+✅ **Comprehensive**: Every code element connected to applicable DSL rules
+
+---
+
+**Time to first demo**: 5 minutes  
+**Time to customize**: 1 hour  
+**Time to close first deal**: 30 days (if you have the network)
+
+Good luck! 🚀

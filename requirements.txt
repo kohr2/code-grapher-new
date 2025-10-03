@@ -1,0 +1,8 @@
+# Core dependencies for DSL-driven Stacktalk
+pyyaml>=6.0
+jinja2>=3.1.0
+rich>=13.7.0
+
+# Optional: COBOL parsing (for future enhancement)
+tree-sitter>=0.21.3
+tree-sitter-cobol>=0.1.0

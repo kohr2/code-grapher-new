@@ -1,0 +1,139 @@
+# Stacktalk - DSL-Driven COBOL Policy Compliance Detection
+
+## Project Overview
+Stacktalk is a DSL-driven system for detecting policy violations in COBOL code using graph-based analysis. The system connects every piece of code to applicable DSL rules for comprehensive compliance checking.
+
+## Architecture Principles
+
+### 1. DSL-First Approach
+- All business rules defined in YAML DSL files (`rules/*.dsl`)
+- Rules are parsed into graph representation first
+- Code analysis happens against graph, not raw text
+- Easy for non-technical users to modify rules
+
+### 2. Graph-Centric Design
+- Graph generation happens BEFORE violation detection
+- Every code element connected to applicable DSL rules
+- Rich data representation enables complex analysis
+- Comprehensive mapping: DSL rules ↔ COBOL code ↔ Violations
+
+### 3. Modular Architecture
+- Each component has single responsibility
+- Independent development and testing
+- Clear separation of concerns
+- Extensible design for new rule types
+
+## File Structure
+```
+stacktalk-demo/
+├── main.py                    # Main orchestration script
+├── src/                       # Source modules
+│   ├── dsl_parser.py         # DSL rule parsing & validation
+│   ├── cobol_generator.py    # COBOL code generation from DSL
+│   ├── rule_detector.py      # Rule violation detection
+│   ├── graph_generator.py    # Graph database operations
+│   └── report_generator.py   # HTML report generation
+├── rules/                     # DSL rule definitions
+│   ├── nsf_rule.dsl          # NSF banking rule
+│   └── dual_approval.dsl     # Dual approval rule
+├── examples/                  # Generated COBOL examples
+└── output/                    # Generated outputs
+```
+
+## Coding Standards
+
+### Python Code
+- Use type hints for all function parameters and return values
+- Follow PEP 8 style guidelines
+- Use dataclasses for structured data
+- Implement proper error handling with custom exceptions
+- Write comprehensive docstrings for all public methods
+
+### DSL Files
+- Use YAML format for rule definitions
+- Follow consistent naming conventions (snake_case for keys)
+- Include validation for all required fields
+- Provide clear descriptions for business users
+
+### Graph Operations
+- Use descriptive node and edge types
+- Include metadata in node properties
+- Create bidirectional relationships where appropriate
+- Implement graph traversal methods for analysis
+
+## Key Components
+
+### DSL Parser (`src/dsl_parser.py`)
+- Parse YAML rule definitions
+- Validate rule structure and syntax
+- Convert rules to graph representation
+- Support rule inheritance and composition
+
+### Graph Generator (`src/graph_generator.py`)
+- Create nodes for programs, variables, procedures, rules
+- Establish relationships between code and rules
+- Support graph queries and analysis
+- Export to JSON for visualization
+
+### Rule Detector (`src/rule_detector.py`)
+- Analyze graph for policy violations
+- Connect violations to specific code elements
+- Support multiple rule types and patterns
+- Provide detailed violation reports
+
+### COBOL Generator (`src/cobol_generator.py`)
+- Generate compliant COBOL examples from DSL
+- Create violation examples for testing
+- Support multiple COBOL dialects
+- Include proper formatting and comments
+
+## Development Guidelines
+
+### 1. Graph-First Development
+- Always generate graph before analysis
+- Connect every code element to applicable rules
+- Use graph traversal for violation detection
+- Maintain graph consistency throughout
+
+### 2. DSL Extensibility
+- Design DSL to be easily extensible
+- Support new rule types without code changes
+- Provide clear DSL documentation
+- Include validation and error messages
+
+### 3. Error Handling
+- Use custom exceptions for different error types
+- Provide clear error messages for DSL validation
+- Handle missing files and invalid syntax gracefully
+- Log errors for debugging
+
+### 4. Testing Strategy
+- Unit tests for each module
+- Integration tests for graph operations
+- DSL validation tests
+- End-to-end tests with sample COBOL
+
+## Business Context
+- Target: Financial institutions with legacy COBOL systems
+- Problem: Policy drift between documented rules and actual code
+- Solution: Automated detection with graph-based analysis
+- Value: Audit compliance, risk reduction, modernization support
+
+## Performance Considerations
+- Graph operations should be efficient for large codebases
+- DSL parsing should be fast for interactive use
+- Report generation should handle multiple violations
+- Memory usage should be reasonable for enterprise deployment
+
+## Security & Compliance
+- Handle sensitive financial data appropriately
+- Support audit trails and compliance reporting
+- Ensure rule definitions are tamper-evident
+- Provide secure access to violation reports
+
+## Future Extensions
+- Neo4j integration for enterprise graph database
+- MCP server for API access
+- CI/CD integration
+- Multiple COBOL dialect support
+- Advanced graph analytics and visualization
