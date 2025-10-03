@@ -41,3 +41,7 @@ examples/
 
 # Node modules (if any frontend is added later)
 node_modules/
+
+# Tree-sitter COBOL grammar (development dependency)
+tree-sitter-cobol/
+build/

@@ -47,6 +47,16 @@ class Violation:
     line_number: Optional[int] = None
     dsl_rule: Optional[str] = None
     context: Optional[Dict[str, Any]] = None
+    
+    @property
+    def rule_name(self) -> Optional[str]:
+        """Alias for dsl_rule to maintain backward compatibility"""
+        return self.dsl_rule
+    
+    @property
+    def violation_type(self) -> str:
+        """Alias for type to maintain backward compatibility"""
+        return self.type
 
 
 class RuleDetectorError(Exception):

@@ -52,6 +52,7 @@ class COBOLGenerator:
         
         # AI configuration
         self.ai_available = self._initialize_ai()
+        self.openai_available = self.ai_available  # Alias for backward compatibility
         self.ai_client = None
         self.ai_model = os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview')
         self.ai_temperature = float(os.getenv('OPENAI_TEMPERATURE', '0.7'))
@@ -396,6 +397,30 @@ class COBOLGenerator:
             f.write(violation_cobol)
         
         return compliant_file, violation_file
+    
+    def save_multiple_cobol_examples(self, rules: List[DSLRule], output_dir: str) -> List[Path]:
+        """
+        Save COBOL examples for multiple DSL rules
+        
+        Args:
+            rules: List of DSL rules to generate examples from
+            output_dir: Directory to save examples
+            
+        Returns:
+            List of generated file paths
+        """
+        generated_files = []
+        
+        for i, rule in enumerate(rules):
+            # Create subdirectory for each rule
+            rule_dir = Path(output_dir) / f"rule_{i}_{rule.name.lower().replace(' ', '_')}"
+            rule_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Generate examples for this rule
+            compliant_file, violation_file = self.save_cobol_examples(rule, str(rule_dir))
+            generated_files.extend([compliant_file, violation_file])
+        
+        return generated_files
     
     def validate_cobol_syntax(self, cobol_code: str) -> bool:
         """

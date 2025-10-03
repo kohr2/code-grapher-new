@@ -606,7 +606,7 @@ class ReportGenerator:
                     <td><span class="{severity_class}" style="font-weight: 600;">{violation['severity']}</span></td>
                     <td>{violation['type']}</td>
                     <td>{violation['message']}</td>
-                    <td>{violation['requirement']}</td>
+                    <td>{violation['dsl_rule'] or violation['requirement']}</td>
                     <td>{violation['source_file'] or 'Unknown'}</td>
                     <td>{violation['line_number'] or 'N/A'}</td>
                 </tr>"""

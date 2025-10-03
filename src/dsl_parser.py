@@ -256,7 +256,9 @@ class DSLParser:
         
         for filename in dsl_files:
             try:
-                rule = self.load_lesson_file(filename)
+                # Extract just the filename from the full path
+                filename_only = Path(filename).name
+                rule = self.load_rule_file(filename_only)
                 rules.append(rule)
                 self.loaded_rules[rule.name] = rule
             except Exception as e:

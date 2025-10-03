@@ -114,8 +114,10 @@ class GraphGenerator:
                 data={
                     "type": var.type,
                     "pic": var.pic,
+                    "pic_clause": var.pic,  # Alias for backward compatibility
                     "value": var.value,
-                    "default": var.default
+                    "default": var.default,
+                    "description": var.description
                 }
             )
             self._add_node(var_node)
@@ -282,21 +284,31 @@ class GraphGenerator:
         
         return violations
     
-    def save_graph(self, filepath: str) -> None:
+    def save_graph(self, filepath: str) -> bool:
         """
         Save graph to JSON file and optionally to Neo4j
         
         Args:
             filepath: Path to save graph
+            
+        Returns:
+            True if save successful, False otherwise
         """
-        output_path = Path(filepath)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(self.graph, f, indent=2, ensure_ascii=False)
-        
-        # Also save to Neo4j if available
-        self.save_to_neo4j(session_name=f"session_{output_path.stem}")
+        try:
+            output_path = Path(filepath)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(self.graph, f, indent=2, ensure_ascii=False)
+            
+            # Also save to Neo4j if available
+            neo4j_result = self.save_to_neo4j(session_name=f"session_{output_path.stem}")
+            
+            # Return True if JSON save succeeded (Neo4j is optional)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save graph: {e}")
+            return False
     
     def save_to_neo4j(self, session_name: str = "latest") -> bool:
         """
@@ -326,12 +338,85 @@ class GraphGenerator:
             return self.neo4j_adapter.get_session_graph(session_name)
         return None
     
-    def load_graph(self, filepath: str) -> None:
+    def create_neo4j_session(self, session_name: str) -> Optional[str]:
+        """
+        Create a Neo4j session
+        
+        Args:
+            session_name: Name for the session
+            
+        Returns:
+            Session ID if successful, None otherwise
+        """
+        if not self.neo4j_available:
+            return None
+        
+        try:
+            return self.neo4j_adapter.create_session(session_name)
+        except Exception as e:
+            logger.error(f"Failed to create Neo4j session: {e}")
+            return None
+    
+    def close_neo4j_session(self) -> bool:
+        """
+        Close the current Neo4j session
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.neo4j_available:
+            return False
+        
+        try:
+            return self.neo4j_adapter.close_session()
+        except Exception as e:
+            logger.error(f"Failed to close Neo4j session: {e}")
+            return False
+    
+    def query_graph(self, query: str) -> Optional[List[Dict[str, Any]]]:
+        """
+        Query the graph using Neo4j Cypher query
+        
+        Args:
+            query: Cypher query string
+            
+        Returns:
+            Query results if Neo4j available, None otherwise
+        """
+        if not self.neo4j_available:
+            return None
+        
+        try:
+            return self.neo4j_adapter.query_neo4j(query)
+        except Exception as e:
+            logger.error(f"Failed to query Neo4j: {e}")
+            return None
+    
+    def get_neo4j_performance_metrics(self) -> Optional[Dict[str, Any]]:
+        """
+        Get Neo4j performance metrics
+        
+        Returns:
+            Performance metrics dictionary if available, None otherwise
+        """
+        if not self.neo4j_available:
+            return None
+        
+        try:
+            return self.neo4j_adapter.get_performance_metrics()
+        except Exception as e:
+            logger.error(f"Failed to get Neo4j performance metrics: {e}")
+            return None
+    
+    def load_graph(self, filepath: str) -> Dict[str, Any]:
         """
         Load graph from JSON file
         
         Args:
             filepath: Path to load graph from
+            
+        Returns:
+            Loaded graph data
         """
         with open(filepath, 'r', encoding='utf-8') as f:
             self.graph = json.load(f)
@@ -341,6 +426,8 @@ class GraphGenerator:
         for node in self.graph["nodes"]:
             if node["type"] == "dsl_rule":
                 self._rule_index[node["name"]] = node["id"]
+        
+        return self.graph
     
     def get_statistics(self) -> Dict[str, Any]:
         """
@@ -505,17 +592,17 @@ class GraphGenerator:
         # Add variable nodes from CST analysis
         for var in cst_analysis.get('variables', []):
             var_node = {
-                "id": f"var_{var['name'].lower().replace('-', '_')}_{program_name.lower()}",
+                "id": f"var_{var.name.lower().replace('-', '_')}_{program_name.lower()}",
                 "type": "cobol_variable",
-                "name": var['name'],
-                "description": f"COBOL variable: {var['name']}",
+                "name": var.name,
+                "description": f"COBOL variable: {var.name}",
                 "source_file": program_name + ".cob",
                 "data": {
-                    "level": var.get('level'),
-                    "pic_clause": var.get('pic_clause'),
-                    "value": var.get('value'),
-                    "parent": var.get('parent'),
-                    "children": var.get('children', []),
+                    "level": var.level,
+                    "pic_clause": var.pic_clause,
+                    "value": var.value,
+                    "parent": var.parent,
+                    "children": var.children or [],
                     "parsing_method": "cst"
                 }
             }
