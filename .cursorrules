@@ -141,11 +141,24 @@ Use TDD approach : always write tests before creating new function or file
 - Handle missing files and invalid syntax gracefully
 - Log errors for debugging
 
-### 6. Testing Strategy
-- Unit tests for each module
-- Integration tests for graph operations
-- DSL validation tests
-- End-to-end tests with sample COBOL
+### 6. Testing
+- **TDD Approach**: Always write tests before creating new function or file
+  **Unit Tests** (`tests/unit/`): DSL Parser, Graph Generator, COBOL CST Parser, COBOL Generator, Rule Detector, Report Generator
+  **Integration Tests** (`tests/integration/`): Full workflow, DSL-to-Graph, COBOL-to-CST, CST-to-Graph, Graph-to-Violations, Neo4j integration
+
+  ```bash
+  python run_tests.py                    # All tests
+  python run_tests.py --unit            # Unit only
+  python run_tests.py --integration     # Integration only
+  ```
+
+  Expected output:
+  ```
+  🧪 Running Unit Tests...
+  ✅ All unit tests passed!
+  ✅ All integration tests passed!
+  🎉 All tests passed! Stacktalk is ready for production.
+  ```
 
 ## Business Context
 - Target: Financial institutions with legacy COBOL systems
@@ -192,6 +205,7 @@ Use TDD approach : always write tests before creating new function or file
     ```
 - Graph operations automatically detect Neo4j availability
 - Fallback to JSON export when Neo4j unavailable
+
 
 ## Future Extensions
 - MCP server for API access

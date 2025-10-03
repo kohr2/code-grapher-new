@@ -48,7 +48,37 @@ If you see errors, check that:
 - Virtual environment is activated
 - DSL rule files are present in `rules/` directory
 
-## Step 3: Run the Demo (1 minute)
+## Step 3: Run Tests (1 minute)
+
+```bash
+# Run all tests (unit + integration)
+python run_tests.py
+
+# Run unit tests only
+python run_tests.py --unit
+
+# Run integration tests only  
+python run_tests.py --integration
+
+# Run specific test
+python run_tests.py --test tests/unit/test_dsl_parser.py
+
+# Verbose output
+python run_tests.py --all --verbose
+```
+
+You should see:
+```
+🧪 Running Unit Tests...
+✅ All unit tests passed!
+
+🔗 Running Integration Tests...
+✅ All integration tests passed!
+
+🎉 All tests passed! Stacktalk is ready for production.
+```
+
+## Step 4: Run the Demo (1 minute)
 
 ```bash
 python main.py
@@ -63,7 +93,7 @@ This will:
 6. ✅ Analyze graph for policy violations
 7. ✅ Generate HTML report
 
-## Step 4: View Results (1 minute)
+## Step 5: View Results (1 minute)
 
 ### In Terminal
 
@@ -98,7 +128,7 @@ Open `output/report.html` to see:
 - **Code-to-rule connections** showing which DSL rules apply to each code element
 - Audit-ready formatting
 
-## Step 5: Customize Rules (1 minute)
+## Step 6: Customize Rules (1 minute)
 
 ```bash
 # Modify NSF rule
