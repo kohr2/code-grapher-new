@@ -177,30 +177,6 @@ class GraphGenerator:
         # Update metadata
         self.graph["metadata"]["rules_count"] += 1
     
-    def generate_cobol_nodes(self, cobol_text: str, program_name: str) -> List[Dict[str, Any]]:
-        """
-        DEPRECATED: Use generate_cobol_nodes_from_cst() instead
-        Parse COBOL text and generate graph nodes using CST parser
-        
-        Args:
-            cobol_text: COBOL source code
-            program_name: Name of the COBOL program
-            
-        Returns:
-            List of generated COBOL nodes
-        """
-        # Import CST parser
-        from cobol_cst_parser import COBOLCSTParser
-        
-        # Use CST parser for comprehensive analysis
-        cst_parser = COBOLCSTParser()
-        try:
-            analysis = cst_parser.analyze_cobol_comprehensive(cobol_text)
-            return self.generate_cobol_nodes_from_cst(analysis, program_name)
-        except Exception as e:
-            # Fallback to basic parsing if CST fails
-            logger.warning(f"CST parsing failed for {program_name}, using fallback: {e}")
-            return self._generate_basic_cobol_nodes(cobol_text, program_name)
     
     def connect_cobol_to_rules(self, cobol_nodes: List[Dict[str, Any]]) -> None:
         """

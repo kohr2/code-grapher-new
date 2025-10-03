@@ -15,6 +15,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from dsl_parser import DSLRule, DSLVariable, DSLRequirement
+from cobol_cst_parser import COBOLCSTParser
 
 
 class TestGraphGenerator(unittest.TestCase):
@@ -82,7 +83,7 @@ class TestGraphGenerator(unittest.TestCase):
         self.assertEqual(len(rule_nodes), 1)
         self.assertEqual(rule_nodes[0]["name"], "Test Rule")
 
-    def test_generate_cobol_nodes_from_text(self):
+    def test_generate_cobol_nodes_from_cst(self):
         """Test parsing COBOL text into graph nodes using CST parser"""
         from graph_generator import GraphGenerator
         
@@ -100,10 +101,14 @@ class TestGraphGenerator(unittest.TestCase):
        STOP RUN.
         """
         
-        graph_gen = GraphGenerator()
-        nodes = graph_gen.generate_cobol_nodes(cobol_text, "test_program")
+        # Use CST parser directly
+        cst_parser = COBOLCSTParser()
+        analysis = cst_parser.analyze_cobol_comprehensive(cobol_text)
         
-        # Should have at least program node + variables (CST parser provides more comprehensive analysis)
+        graph_gen = GraphGenerator()
+        nodes = graph_gen.generate_cobol_nodes_from_cst(analysis, "test_program")
+        
+        # Should have at least program node + variables (CST parser provides comprehensive analysis)
         self.assertGreaterEqual(len(nodes), 3)
         
         # Check node types
@@ -115,7 +120,7 @@ class TestGraphGenerator(unittest.TestCase):
         program_nodes = [n for n in nodes if n["type"] == "cobol_program"]
         self.assertGreater(len(program_nodes), 0)
         parsing_method = program_nodes[0]["data"].get("parsing_method")
-        self.assertIn(parsing_method, ["cst", "basic_fallback"])
+        self.assertEqual(parsing_method, "cst")
 
     def test_connect_cobol_to_dsl_rules(self):
         """Test connecting COBOL elements to applicable DSL rules"""
@@ -133,7 +138,10 @@ class TestGraphGenerator(unittest.TestCase):
        01 ACCOUNT-BALANCE PIC 9(8)V99.
        PROCEDURE DIVISION.
        STOP RUN."""
-        cobol_nodes = graph_gen.generate_cobol_nodes(cobol_text, "test_program")
+        # Use CST parser directly
+        cst_parser = COBOLCSTParser()
+        analysis = cst_parser.analyze_cobol_comprehensive(cobol_text)
+        cobol_nodes = graph_gen.generate_cobol_nodes_from_cst(analysis, "test_program")
         
         # This should create connections between COBOL variables and DSL variables
         graph_gen.connect_cobol_to_rules(cobol_nodes)
@@ -162,7 +170,10 @@ class TestGraphGenerator(unittest.TestCase):
            STOP RUN.
         """
         
-        cobol_nodes = graph_gen.generate_cobol_nodes(cobol_text, "test_program")
+        # Use CST parser directly
+        cst_parser = COBOLCSTParser()
+        analysis = cst_parser.analyze_cobol_comprehensive(cobol_text)
+        cobol_nodes = graph_gen.generate_cobol_nodes_from_cst(analysis, "test_program")
         graph_gen.connect_cobol_to_rules(cobol_nodes)
         
         violations = graph_gen.detect_violations()
