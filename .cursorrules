@@ -30,6 +30,7 @@ stacktalk-demo/
 ├── src/                       # Source modules
 │   ├── dsl_parser.py         # DSL rule parsing & validation
 │   ├── cobol_generator.py    # COBOL code generation from DSL
+│   ├── cobol_cst_parser.py   # Tree-sitter CST-based COBOL parsing
 │   ├── rule_detector.py      # Rule violation detection
 │   ├── graph_generator.py    # Graph database operations
 │   └── report_generator.py   # HTML report generation
@@ -41,6 +42,7 @@ stacktalk-demo/
 ```
 
 ## Coding Standards
+Use TDD approach : always write tests before creating new function or file
 
 ### Python Code
 - Use type hints for all function parameters and return values
@@ -75,6 +77,13 @@ stacktalk-demo/
 - Support graph queries and analysis
 - Export to JSON for visualization
 
+### COBOL CST Parser (`src/cobol_cst_parser.py`)
+- Tree-sitter-based Concrete Syntax Tree parsing
+- Comprehensive COBOL structure recognition (divisions, sections, paragraphs)
+- Hierarchical data structure parsing (01, 02, 03 level variables)
+- Procedure and statement analysis with semantic understanding
+- Support for multiple COBOL dialects and enterprise patterns
+
 ### Rule Detector (`src/rule_detector.py`)
 - Analyze graph for policy violations
 - Connect violations to specific code elements
@@ -82,10 +91,21 @@ stacktalk-demo/
 - Provide detailed violation reports
 
 ### COBOL Generator (`src/cobol_generator.py`)
-- Generate compliant COBOL examples from DSL
-- Create violation examples for testing
-- Support multiple COBOL dialects
-- Include proper formatting and comments
+- Generate compliant COBOL examples from DSL using AI or templates
+- Create sophisticated violation examples using OpenAI intelligence
+- Support multiple COBOL dialects and business domains
+- Include proper formatting, comments, and enterprise patterns
+- **AI Mode**: Uses OpenAI API with business context and compliance expertise
+- **Template Mode**: Falls back to template-based generation for reliability
+
+### COBOL CST Parser (`src/cobol_cst_parser.py`)
+- Tree-sitter-based Concrete Syntax Tree parsing for comprehensive COBOL analysis
+- Parse COBOL divisions, sections, paragraphs, and statements
+- Extract hierarchical data structures (01, 02, 03 level variables with relationships)
+- Identify procedures, paragraphs, and their semantic meaning
+- Support for COPY statements, file definitions, and complex business logic
+- **Tree-sitter Integration**: Uses yutaro-sakamoto/tree-sitter-cobol for robust parsing
+- **Semantic Analysis**: Understands business logic patterns and compliance requirements
 
 ## Development Guidelines
 
@@ -101,13 +121,27 @@ stacktalk-demo/
 - Provide clear DSL documentation
 - Include validation and error messages
 
-### 3. Error Handling
+### 3. CST-Based COBOL Parsing
+- Use Tree-sitter with COBOL grammar for comprehensive parsing
+- Parse complete COBOL structure including divisions, sections, paragraphs
+- Extract hierarchical data relationships and semantic meaning
+- Support enterprise COBOL patterns and complex business logic
+- Integrate CST parser with graph generation for complete code analysis
+
+### 4. AI Integration
+- Use OpenAI API for intelligent code generation
+- Build rich business context from DSL rules and graph
+- Generate sophisticated violation examples with domain expertise
+- Fallback to template-based generation when AI is unavailable
+- Store API key securely in `.env` file (OPENAI_KEY)
+
+### 5. Error Handling
 - Use custom exceptions for different error types
 - Provide clear error messages for DSL validation
 - Handle missing files and invalid syntax gracefully
 - Log errors for debugging
 
-### 4. Testing Strategy
+### 6. Testing Strategy
 - Unit tests for each module
 - Integration tests for graph operations
 - DSL validation tests
@@ -131,9 +165,40 @@ stacktalk-demo/
 - Ensure rule definitions are tamper-evident
 - Provide secure access to violation reports
 
+## Environment Configuration
+- Create `.env` file with `OPENAI_KEY=your_api_key_here`
+- AI mode automatically enabled when OPENAI_KEY is present
+- Fallback to template mode when AI unavailable
+- Support for multiple AI providers (OpenAI, Anthropic, local models)
+- Neo4j integration for enterprise graph database persistence
+- Tree-sitter COBOL grammar integration for comprehensive parsing
+
+## Neo4j Integration
+- Enterprise graph database persistence for large-scale deployment
+- Development: Runs via Neo4j Desktop with local credentials in `.env`
+- Production: Supports Neo4j AuraDB or self-hosted Neo4j instances
+- Graph operations export to Neo4j for complex analytics and visualization
+- Preserve JSON export for simple deployments and testing
+
+## Development Setup
+- Install Neo4j Desktop for local development
+  - Configure `.env` with Neo4j credentials:
+    ```
+    OPENAI_KEY=your_api_key_here
+    NEO4J_URI=bolt://localhost:7687
+    NEO4J_USER=neo4j
+    NEO4J_PASSWORD=your_neo4j_password
+    NEO4J_DATABASE=your_neo4j_database
+    ```
+- Graph operations automatically detect Neo4j availability
+- Fallback to JSON export when Neo4j unavailable
+
 ## Future Extensions
-- Neo4j integration for enterprise graph database
 - MCP server for API access
 - CI/CD integration
-- Multiple COBOL dialect support
+- Multiple COBOL dialect support with Tree-sitter grammars
 - Advanced graph analytics and visualization
+- Multi-provider AI support (GPT-4, Claude, local models)
+- AI-powered violation classification and remediation suggestions
+- Enhanced CST parsing with semantic analysis and business logic understanding
+- Integration with COBOL IDEs and development tools

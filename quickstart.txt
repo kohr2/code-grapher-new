@@ -21,6 +21,10 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Optional: Setup AI-powered COBOL generation
+# Create .env file with your OpenAI API key for enhanced code generation
+echo "OPENAI_KEY=your_api_key_here" > .env
 ```
 
 ## Step 2: Verify Installation (30 seconds)
@@ -35,6 +39,7 @@ You should see:
 📋 Loaded rule: NSF Banking Rule
    Variables: 4
    Requirements: 3
+🧠 AI COBOL Generation: Available (OPENAI_KEY detected)
 ```
 
 If you see errors, check that:
@@ -52,10 +57,11 @@ python main.py
 This will:
 1. ✅ Parse DSL rules from `rules/*.dsl` files
 2. ✅ Generate graph from DSL rules (variables, requirements, logic)
-3. ✅ Parse COBOL code into graph (programs, variables, procedures)
-4. ✅ Connect every code element to applicable DSL rules
-5. ✅ Analyze graph for policy violations
-6. ✅ Generate HTML report
+3. ✅ **Generate AI-powered COBOL** examples using OpenAI (if API key available)
+4. ✅ **Parse COBOL code with Tree-sitter CST** into graph (programs, variables, procedures, hierarchical structures)
+5. ✅ Connect every code element to applicable DSL rules
+6. ✅ Analyze graph for policy violations
+7. ✅ Generate HTML report
 
 ## Step 4: View Results (1 minute)
 
@@ -67,12 +73,15 @@ You'll see output like:
 🏦 Stacktalk MVP: DSL-Driven Financial Rule Detection
 ============================================================
 📋 Loaded rule: NSF Banking Rule (4 variables, 3 requirements)
+🧠 AI COBOL Generation: Enabled (OpenAI GPT-4)
+🌳 Tree-sitter CST Parser: Enabled (Comprehensive COBOL parsing)
+✅ Generated AI-powered COBOL examples
 ✅ Generated graph from DSL rules
-✅ Parsed COBOL code into graph
+✅ Parsed COBOL code with Tree-sitter CST into graph
 ✅ Connected code elements to DSL rules
 🔍 Analyzing graph for violations...
-   ❌ Found 3 violations in violation.cob
-   ✅ No violations in compliant.cob
+   ❌ Found 3 violations in violation.cob (AI-generated sophisticated violations)
+   ✅ No violations in compliant.cob (AI-generated compliant logic)
 
 📊 Graph Statistics: 15 nodes, 12 edges, 50% compliance
 ✅ Graph saved: output/graph.json
@@ -85,6 +94,7 @@ Open `output/report.html` to see:
 - Executive summary dashboard
 - Detailed violation reports with syntax highlighting
 - Graph statistics and compliance metrics
+- **AI-generated COBOL** with sophisticated business logic and enterprise patterns
 - **Code-to-rule connections** showing which DSL rules apply to each code element
 - Audit-ready formatting
 
@@ -110,12 +120,21 @@ cat output/graph.json
 ## What Stacktalk Detects
 
 **NSF Banking Rule**: NSF events must be logged and fee applied
-- ❌ Violation: Missing NSF-LOG-FLAG variable
-- ✅ Compliant: NSF logging + fee application
+- ❌ **AI-Generated Violation**: Sophisticated fraud detection bypass, subtle audit trail gaps
+- ✅ **AI-Generated Compliant**: Complete NSF handling with enterprise-grade error management
 
 **Dual Approval Rule**: Payments >$10K require two approvers  
-- ❌ Violation: Only checks one approver
-- ✅ Compliant: Validates both APPROVER-ID and APPROVER-2-ID
+- ❌ **AI-Generated Violation**: Complex approval chain manipulation, timing-based exploits
+- ✅ **AI-Generated Compliant**: Multi-layer authorization with comprehensive logging
+
+## AI-Powered Code Generation
+
+🧠 **OpenAI Integration** provides:
+- **Domain Expertise**: Banking, healthcare, insurance compliance knowledge
+- **Sophisticated Logic**: Real-world business scenarios and edge cases
+- **Enterprise Patterns**: Proper error handling, logging, and audit trails
+- **Intelligent Violations**: Subtle compliance gaps that pass basic testing
+- **Context Awareness**: Understanding of regulatory requirements and best practices
 
 ## Graph Connectivity
 
@@ -142,9 +161,14 @@ COBOL Program "WITHDRAWAL-PROCESS"
 
 ## Common Issues
 
-**Missing dependencies**: `pip install pyyaml jinja2 rich`
+**Missing dependencies**: `pip install pyyaml jinja2 rich openai`
 
 **DSL validation error**: Check YAML syntax in `rules/*.dsl`
+
+**AI generation fails**: 
+- Check `.env` file has `OPENAI_KEY=your_api_key_here`
+- Verify API key is valid and has credits
+- Falls back to template mode automatically
 
 **No violations detected**: Modify DSL file to match your code patterns
 
@@ -152,11 +176,18 @@ COBOL Program "WITHDRAWAL-PROCESS"
 
 **Problem** (2 min): COBOL code drifts from documented policies → audit risk
 
-**DSL Demo** (3 min): `vim rules/nsf_rule.dsl` → modify fee → `python main.py`
+**AI-Powered Demo** (3 min): 
+```bash
+vim rules/nsf_rule.dsl  # Modify compliance requirements
+python main.py          # Watch AI generate sophisticated COBOL
+```
 
-**Results** (3 min): Terminal violations + HTML report + graph data
+**Results Showcase** (3 min):
+- Show AI-generated enterprise-grade NSF handling vs basic templates
+- Demonstrate sophisticated compliance violations that pass cursory review
+- Highlight domain expertise: fraud detection, audit trails, edge cases
 
-**Close** (2 min): "Want to see your production code? 90-day pilot: $75K"
+**Close** (2 min): "Ready for AI-powered compliance analysis? Enterprise pilot: $100K with custom DSL"
 
 ## Next Steps
 
@@ -172,18 +203,21 @@ COBOL Program "WITHDRAWAL-PROCESS"
 stacktalk-demo/
 ├── main.py                    # Main orchestration script
 ├── requirements.txt           # Python dependencies
+├── .env                       # OpenAI API key (OPENAI_KEY=xxx)
+├── .gitignore                 # Excludes .env, output/, examples/
 ├── src/                       # Source modules
-│   ├── dsl_parser.py         # DSL rule parsing
-│   ├── cobol_generator.py    # COBOL code generation
+│   ├── dsl_parser.py         # DSL rule parsing & validation
+│   ├── cobol_generator.py    # API-powered COBOL generation
+│   ├── cobol_cst_parser.py   # Tree-sitter CST-based COBOL parsing
 │   ├── rule_detector.py      # Rule violation detection
 │   ├── graph_generator.py    # Graph database operations
 │   └── report_generator.py   # HTML report generation
 ├── rules/                     # DSL rule definitions
 │   ├── nsf_rule.dsl          # NSF banking rule
 │   └── dual_approval.dsl     # Dual approval rule
-├── examples/                  # Generated COBOL examples
-│   ├── compliant.cob
-│   └── violation.cob
+├── examples/                  # Generated COBOL examples (AI-powered)
+│   ├── compliant.cob         # Enterprise-grade compliant logic
+│   └── violation.cob         # Sophisticated violation scenarios
 └── output/                    # Generated outputs
     ├── graph.json            # Graph representation
     └── report.html           # Compliance report
@@ -196,6 +230,7 @@ stacktalk-demo/
 ✅ main.py                - Main orchestration script
 ✅ src/dsl_parser.py      - DSL rule parsing
 ✅ src/cobol_generator.py - COBOL code generation  
+✅ src/cobol_cst_parser.py - Tree-sitter CST-based COBOL parsing
 ✅ src/rule_detector.py   - Rule violation detection
 ✅ src/graph_generator.py - Graph database operations
 ✅ src/report_generator.py - HTML report generation
@@ -220,9 +255,12 @@ stacktalk-demo/
 
 ✅ **DSL-Driven**: Rules in YAML, not hardcoded  
 ✅ **Graph-Enabled**: Rich data representation with **complete code-to-rule mapping**  
-✅ **Modular**: Independent components  
+✅ **AI-Powered**: OpenI-generated enterprise-grade COBOL with domain expertise
+✅ **CST-Parsed**: Tree-sitter-based comprehensive COBOL parsing with hierarchical structure
+✅ **Modular**: Independent components with API integration
 ✅ **Business-Friendly**: Non-technical users can modify rules
 ✅ **Comprehensive**: Every code element connected to applicable DSL rules
+✅ **Intelligent**: Sophisticated violation detection that passes cursory review
 
 ---
 
