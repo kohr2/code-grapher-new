@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from dsl_parser import DSLRule, DSLVariable, DSLRequirement
+from neo4j_adapter import Neo4jAdapter
 
 
 @dataclass
@@ -71,6 +72,10 @@ class GraphGenerator:
         }
         self._node_counter = 0
         self._rule_index = {}  # Maps rule names to node IDs
+        
+        # Initialize Neo4j adapter
+        self.neo4j_adapter = Neo4jAdapter()
+        self.neo4j_available = self.neo4j_adapter.is_available()
     
     def add_dsl_rule(self, rule: DSLRule) -> None:
         """
@@ -308,7 +313,7 @@ class GraphGenerator:
     
     def save_graph(self, filepath: str) -> None:
         """
-        Save graph to JSON file
+        Save graph to JSON file and optionally to Neo4j
         
         Args:
             filepath: Path to save graph
@@ -318,6 +323,37 @@ class GraphGenerator:
         
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(self.graph, f, indent=2, ensure_ascii=False)
+        
+        # Also save to Neo4j if available
+        self.save_to_neo4j(session_name=f"session_{output_path.stem}")
+    
+    def save_to_neo4j(self, session_name: str = "latest") -> bool:
+        """
+        Save graph to Neo4j database if available
+        
+        Args:
+            session_name: Name for this graph session
+            
+        Returns:
+            True if saved to Neo4j, False if fell back to JSON only
+        """
+        if self.neo4j_available:
+            return self.neo4j_adapter.save_graph(self.graph, session_name)
+        return False
+    
+    def load_from_neo4j(self, session_name: str = "latest") -> Optional[Dict[str, Any]]:
+        """
+        Load graph from Neo4j database if available
+        
+        Args:
+            session_name: Name of graph session to load
+            
+        Returns:
+            Graph data if loaded from Neo4j, None if not available
+        """
+        if self.neo4j_available:
+            return self.neo4j_adapter.get_session_graph(session_name)
+        return None
     
     def load_graph(self, filepath: str) -> None:
         """
@@ -490,6 +526,70 @@ class GraphGenerator:
                 procedures.append(proc_node)
         
         return procedures
+    
+    def generate_cobol_nodes_from_cst(self, cst_analysis: Dict[str, Any], program_name: str) -> List[Dict[str, Any]]:
+        """
+        Generate graph nodes from CST analysis results
+        
+        Args:
+            cst_analysis: Comprehensive COBOL analysis from CST parser
+            program_name: Name of the COBOL program
+            
+        Returns:
+            List of generated COBOL nodes
+        """
+        nodes = []
+        
+        # Create program node
+        program_node = {
+            "id": f"program_{program_name.lower().replace('-', '_')}",
+            "type": "cobol_program",
+            "name": program_name,
+            "description": f"COBOL program: {program_name}",
+            "source_file": program_name + ".cob",
+            "data": {
+                "program_info": cst_analysis.get('program_info', {}),
+                "parsing_method": "cst"
+            }
+        }
+        nodes.append(program_node)
+        
+        # Add variable nodes from CST analysis
+        for var in cst_analysis.get('variables', []):
+            var_node = {
+                "id": f"var_{var['name'].lower().replace('-', '_')}_{program_name.lower()}",
+                "type": "cobol_variable",
+                "name": var['name'],
+                "description": f"COBOL variable: {var['name']}",
+                "source_file": program_name + ".cob",
+                "data": {
+                    "level": var.get('level'),
+                    "pic_clause": var.get('pic_clause'),
+                    "value": var.get('value'),
+                    "parent": var.get('parent'),
+                    "children": var.get('children', []),
+                    "parsing_method": "cst"
+                }
+            }
+            nodes.append(var_node)
+        
+        # Add procedure nodes from CST analysis
+        for proc in cst_analysis.get('procedures', []):
+            proc_node = {
+                "id": f"proc_{proc['name'].lower().replace('-', '_')}_{program_name.lower()}",
+                "type": "cobol_procedure",
+                "name": proc['name'],
+                "description": f"COBOL procedure: {proc['name']}",
+                "source_file": program_name + ".cob",
+                "data": {
+                    "type": proc.get('type', 'procedure'),
+                    "statements": proc.get('statements', []),
+                    "parsing_method": "cst"
+                }
+            }
+            nodes.append(proc_node)
+        
+        return nodes
     
     def _variables_match(self, cobol_var: str, dsl_var: str) -> bool:
         """Check if COBOL variable matches DSL variable"""
