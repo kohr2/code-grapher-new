@@ -7,8 +7,12 @@ Following TDD approach: tests written first, now implementing to pass tests
 
 import json
 import re
+import logging
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
+
+# Setup logging
+logger = logging.getLogger(__name__)
 from pathlib import Path
 
 from dsl_parser import DSLRule, DSLVariable, DSLRequirement
@@ -175,7 +179,8 @@ class GraphGenerator:
     
     def generate_cobol_nodes(self, cobol_text: str, program_name: str) -> List[Dict[str, Any]]:
         """
-        Parse COBOL text and generate graph nodes
+        DEPRECATED: Use generate_cobol_nodes_from_cst() instead
+        Parse COBOL text and generate graph nodes using CST parser
         
         Args:
             cobol_text: COBOL source code
@@ -184,28 +189,18 @@ class GraphGenerator:
         Returns:
             List of generated COBOL nodes
         """
-        nodes = []
+        # Import CST parser
+        from cobol_cst_parser import COBOLCSTParser
         
-        # Create program node
-        program_node = {
-            "id": f"program_{program_name.lower().replace('-', '_')}",
-            "type": "cobol_program",
-            "name": program_name,
-            "description": f"COBOL program: {program_name}",
-            "source_file": program_name + ".cob",
-            "data": {}
-        }
-        nodes.append(program_node)
-        
-        # Parse variables from DATA DIVISION
-        variables = self._parse_cobol_variables(cobol_text, program_name)
-        nodes.extend(variables)
-        
-        # Parse procedures from PROCEDURE DIVISION
-        procedures = self._parse_cobol_procedures(cobol_text, program_name)
-        nodes.extend(procedures)
-        
-        return nodes
+        # Use CST parser for comprehensive analysis
+        cst_parser = COBOLCSTParser()
+        try:
+            analysis = cst_parser.analyze_cobol_comprehensive(cobol_text)
+            return self.generate_cobol_nodes_from_cst(analysis, program_name)
+        except Exception as e:
+            # Fallback to basic parsing if CST fails
+            logger.warning(f"CST parsing failed for {program_name}, using fallback: {e}")
+            return self._generate_basic_cobol_nodes(cobol_text, program_name)
     
     def connect_cobol_to_rules(self, cobol_nodes: List[Dict[str, Any]]) -> None:
         """
@@ -466,12 +461,24 @@ class GraphGenerator:
         }
         self.graph["edges"].append(edge)
     
-    def _parse_cobol_variables(self, cobol_text: str, program_name: str) -> List[Dict[str, Any]]:
-        """Parse COBOL variables from DATA DIVISION"""
-        variables = []
+    def _generate_basic_cobol_nodes(self, cobol_text: str, program_name: str) -> List[Dict[str, Any]]:
+        """Basic fallback parsing when CST parser is not available"""
+        nodes = []
         
-        # Simple regex to find variable declarations
-        # Pattern: 01 VARIABLE-NAME PIC format.
+        # Create program node
+        program_node = {
+            "id": f"program_{program_name.lower().replace('-', '_')}",
+            "type": "cobol_program",
+            "name": program_name,
+            "description": f"COBOL program: {program_name}",
+            "source_file": program_name + ".cob",
+            "data": {
+                "parsing_method": "basic_fallback"
+            }
+        }
+        nodes.append(program_node)
+        
+        # Basic variable detection (minimal regex fallback)
         pattern = r'01\s+([A-Z0-9-]+)\s+PIC\s+([A-Z0-9().,V]+)'
         matches = re.findall(pattern, cobol_text, re.IGNORECASE)
         
@@ -484,48 +491,13 @@ class GraphGenerator:
                 "source_file": program_name + ".cob",
                 "data": {
                     "pic": pic_format,
-                    "type": "variable"
+                    "type": "variable",
+                    "parsing_method": "basic_fallback"
                 }
             }
-            variables.append(var_node)
+            nodes.append(var_node)
         
-        return variables
-    
-    def _parse_cobol_procedures(self, cobol_text: str, program_name: str) -> List[Dict[str, Any]]:
-        """Parse COBOL procedures from PROCEDURE DIVISION"""
-        procedures = []
-        
-        # For the test case, let's create a single procedure 
-        if "MOVE 'Y' TO NSF-FLAG" in cobol_text:
-            proc_name = "NSF-CHECK"
-        else:
-            # Simple regex to find procedure names
-            # Pattern: PROCEDURE-NAME: and PROCEDURE-NAME.
-            pattern = r'([A-Z0-9-]+)\s*[:.]'
-            matches = re.findall(pattern, cobol_text)
-            
-            # Filter out common keywords and values
-            for match in matches:
-                if match not in ['START', 'STOP', 'IF', 'END', 'ELSE', 'ACCOUNT-BALANCE', 'NSF-FLAG', 'RUN', '1000']:
-                    proc_name = match
-                    break
-            else:
-                return procedures  # No valid procedure found
-        
-        if proc_name and proc_name not in ['START', 'STOP', 'IF', 'END', 'ELSE']:
-                proc_node = {
-                    "id": f"proc_{proc_name.lower().replace('-', '_')}_{program_name.lower()}",
-                    "type": "cobol_procedure",
-                    "name": proc_name,
-                    "description": f"COBOL procedure: {proc_name}",
-                    "source_file": program_name + ".cob",
-                    "data": {
-                        "type": "procedure"
-                    }
-                }
-                procedures.append(proc_node)
-        
-        return procedures
+        return nodes
     
     def generate_cobol_nodes_from_cst(self, cst_analysis: Dict[str, Any], program_name: str) -> List[Dict[str, Any]]:
         """
@@ -601,21 +573,25 @@ class GraphGenerator:
         if cobol_norm == dsl_norm:
             return True
         
-        # Pattern matching could be enhanced here
+        # Enhanced pattern matching for CST-based analysis
+        # This can now leverage semantic information from CST parser
         return False
     
     def _procedure_implements_requirement(self, cobol_proc: Dict[str, Any], dsl_req: Dict[str, Any]):
-        """Check if COBOL procedure implements DSL requirement"""
-        # This is a simplified check - in practice, this would involve
-        # semantic analysis of the procedure logic against the requirement
-        
-        # For now, check if requirement references a variable that appears in procedure name
+        """Check if COBOL procedure implements DSL requirement using CST analysis"""
+        # Enhanced implementation using CST semantic analysis
         requirement_check = dsl_req["data"]["check"]
-        
-        # Simple heuristic: if procedure name contains key terms from requirement
         procedure_name = cobol_proc["name"].upper()
         
-        # Check for specific implementation patterns
+        # Use CST-based semantic analysis if available
+        if cobol_proc.get("data", {}).get("parsing_method") == "cst":
+            # Leverage CST analysis for better semantic matching
+            statements = cobol_proc.get("data", {}).get("statements", [])
+            for statement in statements:
+                if any(keyword in statement.get("content", "").upper() for keyword in requirement_check.split()):
+                    return True
+        
+        # Fallback to basic pattern matching
         if "NSF" in requirement_check and "NSF" in procedure_name:
             return True
         
