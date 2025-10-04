@@ -178,12 +178,12 @@ class Neo4jAdapter:
         # Create hierarchical relationships based on node type
         self._create_hierarchical_relationships(session, node_data, session_name)
         
-            # Only connect cobolprogram nodes to session, others use hierarchical relationships
-            if node_type == "cobol_program":
-                session.run("""
-                    MATCH (n {id: $node_id}), (s:StacktalkSession {name: $session_name})
-                    MERGE (s)-[:CONTAINS]->(n)
-                """, node_id=node_id, session_name=session_name)
+        # Only connect cobolprogram nodes to session, others use hierarchical relationships
+        if node_type == "cobol_program":
+            session.run("""
+                MATCH (n {id: $node_id}), (s:StacktalkSession {name: $session_name})
+                MERGE (s)-[:CONTAINS]->(n)
+            """, node_id=node_id, session_name=session_name)
     
     def _create_hierarchical_relationships(self, session, node_data: Dict[str, Any], session_name: str) -> None:
         """Create proper hierarchical relationships between COBOL elements"""
