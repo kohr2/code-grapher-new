@@ -437,8 +437,8 @@ class GraphGenerator:
             if violation.dsl_rule:
                 rule_id = f"rule_{violation.dsl_rule.lower().replace(' ', '_')}"
                 violation_edge = {
-                    "from_node": violation_id,
-                    "to_node": rule_id,
+                    "from": violation_id,
+                    "to": rule_id,
                     "type": "VIOLATES_RULE",
                     "description": f"Violation violates rule: {violation.dsl_rule}"
                 }
@@ -456,8 +456,8 @@ class GraphGenerator:
                 
                 if cobol_element_id:
                     element_edge = {
-                        "from_node": violation_id,
-                        "to_node": cobol_element_id,
+                        "from": violation_id,
+                        "to": cobol_element_id,
                         "type": "VIOLATES_ELEMENT",
                         "description": f"Violation affects element: {violation.code_element}"
                     }
