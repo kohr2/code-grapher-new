@@ -202,16 +202,19 @@ class Neo4jAdapter:
                     MATCH (stmt {id: $stmt_id})
                     MERGE (proc)-[:HAS_STATEMENT]->(stmt)
                 """, proc_name=parent_procedure, session_name=session_name, stmt_id=node_id)
+            
+            # Connect variables to statements where they are used
+            variables_used = data.get("variables_used", [])
+            if variables_used:
+                for var_name in variables_used:
+                    session.run("""
+                        MATCH (stmt {id: $stmt_id})
+                        MATCH (var:cobolvariable {name: $var_name, session: $session_name})
+                        MERGE (stmt)-[:USES_VARIABLE]->(var)
+                    """, stmt_id=node_id, var_name=var_name, session_name=session_name)
         
         # Connect variables to their parent programs and create variable hierarchy
         elif node_type == "cobol_variable":
-            # Find the program node from the same session and create HAS_VARIABLE relationship
-            session.run("""
-                MATCH (prog:cobolprogram {session: $session_name})
-                MATCH (var {id: $var_id})
-                MERGE (prog)-[:HAS_VARIABLE]->(var)
-            """, session_name=session_name, var_id=node_id)
-            
             # Create variable hierarchy (parent-child relationships)
             parent_name = data.get("parent")
             if parent_name and parent_name.strip() and parent_name != node_data.get("name", ""):
@@ -231,6 +234,17 @@ class Neo4jAdapter:
                 MATCH (proc {id: $proc_id})
                 MERGE (prog)-[:HAS_PROCEDURE]->(proc)
             """, session_name=session_name, proc_id=node_id)
+        
+        # Connect statement blocks to their parent procedures
+        elif node_type == "cobol_statement_block":
+            # Find the procedure node from the same session and create HAS_STATEMENT_BLOCK relationship
+            parent_procedure = data.get("parent_procedure")
+            if parent_procedure:
+                session.run("""
+                    MATCH (proc:cobolprocedure {name: $proc_name, session: $session_name})
+                    MATCH (block {id: $block_id})
+                    MERGE (proc)-[:HAS_STATEMENT_BLOCK]->(block)
+                """, proc_name=parent_procedure, session_name=session_name, block_id=node_id)
         
         # Connect sections to their parent divisions
         elif node_type == "cobol_section":

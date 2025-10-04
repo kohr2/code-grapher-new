@@ -206,6 +206,7 @@ class GraphGenerator:
                 "data": {
                     "type": proc.get('type', 'procedure'),
                     "statements_count": len(proc.get('statements', [])),
+                    "blocks_count": len(proc.get('statement_blocks', [])),
                     "parsing_method": "cst"
                 }
             }
@@ -224,6 +225,7 @@ class GraphGenerator:
                         "content": stmt.get('content', ''),
                         "parent_procedure": proc['name'],
                         "statement_index": i,
+                        "variables_used": stmt.get('variables', []),
                         "parsing_method": "cst"
                     }
                 }

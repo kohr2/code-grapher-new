@@ -733,6 +733,7 @@ class COBOLCSTParser:
                     'name': paragraph_name,
                     'type': proc_type,
                     'statements': [],
+                    'statement_blocks': [],
                     'line_number': line_num
                 }
                 procedures.append(current_procedure)
@@ -752,6 +753,7 @@ class COBOLCSTParser:
                     'name': line_clean,
                     'type': 'paragraph',
                     'statements': [],
+                    'statement_blocks': [],
                     'line_number': line_num
                 }
                 procedures.append(current_procedure)
@@ -805,13 +807,128 @@ class COBOLCSTParser:
                 # Extract variables from the statement
                 variables_used = self._extract_variables_from_statement(line_clean, stmt_type)
                 
+                # Add statement to current procedure
                 current_procedure['statements'].append({
                     'type': stmt_type,
                     'content': line_clean,
                     'variables': variables_used
                 })
+                
+                # Group statements into logical blocks
+                self._group_statements_into_blocks(current_procedure, stmt_type, line_clean, line_num)
+        
+        # Finalize any remaining blocks
+        for procedure in procedures:
+            if 'current_block' in procedure and procedure['current_block']:
+                procedure['statement_blocks'].append(procedure['current_block'])
+                procedure['current_block'] = None
+                
+                # Convert sets to lists for JSON serialization
+                for block in procedure['statement_blocks']:
+                    block['variables_used'] = list(block['variables_used'])
         
         return procedures
+    
+    def _group_statements_into_blocks(self, procedure: Dict[str, Any], stmt_type: str, line_clean: str, line_num: int) -> None:
+        """
+        Group statements into logical blocks based on COBOL patterns
+        
+        Args:
+            procedure: Current procedure being processed
+            stmt_type: Type of the current statement
+            line_clean: Cleaned line content
+            line_num: Line number
+        """
+        # Initialize current block if needed
+        if 'current_block' not in procedure:
+            procedure['current_block'] = None
+        
+        # Determine if this statement starts a new block
+        starts_new_block = False
+        block_type = 'SEQUENTIAL'
+        block_name = f"Block_{len(procedure.get('statement_blocks', [])) + 1}"
+        
+        # Check for block-starting patterns
+        if stmt_type == 'PERFORM':
+            # PERFORM statements often start logical blocks
+            starts_new_block = True
+            block_type = 'PERFORM_BLOCK'
+            # Extract the procedure name being performed
+            perform_match = re.search(r'PERFORM\s+(\S+)', line_clean.upper())
+            if perform_match:
+                block_name = f"PERFORM_{perform_match.group(1)}"
+        
+        elif stmt_type == 'IF':
+            # IF statements start conditional blocks
+            starts_new_block = True
+            block_type = 'CONDITIONAL_BLOCK'
+            block_name = f"IF_BLOCK_{len(procedure['statement_blocks']) + 1}"
+        
+        elif stmt_type == 'EVALUATE':
+            # EVALUATE statements start evaluation blocks
+            starts_new_block = True
+            block_type = 'EVALUATION_BLOCK'
+            block_name = f"EVALUATE_BLOCK_{len(procedure['statement_blocks']) + 1}"
+        
+        elif stmt_type in ['READ', 'WRITE', 'OPEN', 'CLOSE']:
+            # File operations often form logical blocks
+            starts_new_block = True
+            block_type = 'FILE_OPERATION_BLOCK'
+            block_name = f"FILE_{stmt_type}_{len(procedure['statement_blocks']) + 1}"
+        
+        elif stmt_type == 'STOP':
+            # STOP RUN ends the procedure
+            starts_new_block = True
+            block_type = 'TERMINATION_BLOCK'
+            block_name = "TERMINATION"
+        
+        # If starting a new block, finalize the current one and start a new one
+        if starts_new_block:
+            # Finalize current block if it exists
+            if procedure['current_block']:
+                procedure['statement_blocks'].append(procedure['current_block'])
+            
+            # Start new block
+            procedure['current_block'] = {
+                'name': block_name,
+                'type': block_type,
+                'statements': [],
+                'start_line': line_num,
+                'end_line': line_num,
+                'variables_used': set()
+            }
+        
+        # Add statement to current block (or create a default block if none exists)
+        if not procedure['current_block']:
+            procedure['current_block'] = {
+                'name': f"SEQUENTIAL_BLOCK_{len(procedure.get('statement_blocks', [])) + 1}",
+                'type': 'SEQUENTIAL',
+                'statements': [],
+                'start_line': line_num,
+                'end_line': line_num,
+                'variables_used': set()
+            }
+        
+        # Add statement to current block
+        procedure['current_block']['statements'].append({
+            'type': stmt_type,
+            'content': line_clean,
+            'line_number': line_num
+        })
+        
+        # Update block end line
+        procedure['current_block']['end_line'] = line_num
+        
+        # Add variables to block's variable set
+        variables_used = self._extract_variables_from_statement(line_clean, stmt_type)
+        procedure['current_block']['variables_used'].update(variables_used)
+        
+        # Check for block-ending patterns
+        if stmt_type in ['END-IF', 'END-EVALUATE', 'STOP', 'EXIT']:
+            # Finalize current block
+            if procedure['current_block']:
+                procedure['statement_blocks'].append(procedure['current_block'])
+                procedure['current_block'] = None
     
     def _extract_variables_from_statement(self, statement: str, stmt_type: str) -> List[str]:
         """
@@ -898,16 +1015,6 @@ class COBOLCSTParser:
         
         else:
             # Generic approach: find all uppercase words that look like variables
-            # Filter out common COBOL keywords
-            cobol_keywords = {
-                'IF', 'THEN', 'ELSE', 'END-IF', 'PERFORM', 'UNTIL', 'VARYING',
-                'FROM', 'BY', 'TO', 'MOVE', 'ADD', 'SUBTRACT', 'COMPUTE',
-                'READ', 'WRITE', 'OPEN', 'CLOSE', 'DISPLAY', 'ACCEPT',
-                'STOP', 'RUN', 'EXIT', 'EVALUATE', 'WHEN', 'END-EVALUATE',
-                'STRING', 'UNSTRING', 'DELIMITED', 'BY', 'SIZE', 'INTO',
-                'FUNCTION', 'CURRENT-DATE', 'MOD', 'OR', 'AND', 'NOT'
-            }
-            
             potential_vars = re.findall(r'\b([A-Z][A-Z0-9-]*)\b', statement_upper)
             for var in potential_vars:
                 if var not in cobol_keywords and len(var) > 1:
@@ -1116,6 +1223,7 @@ class COBOLCSTParser:
                 'divisions': divisions,
                 'file_sections': file_sections,
                 'copy_statements': copy_statements,
+                'statement_blocks': self._extract_statement_blocks(procedures),
                 'parsing_method': 'cst',
                 'source_file': filepath
             }
@@ -1123,6 +1231,33 @@ class COBOLCSTParser:
         except Exception as e:
             logger.error(f"Comprehensive COBOL analysis failed: {e}")
             raise COBOLParsingError(f"Comprehensive analysis failed: {e}")
+    
+    def _extract_statement_blocks(self, procedures: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Extract all statement blocks from procedures
+        
+        Args:
+            procedures: List of procedure dictionaries
+            
+        Returns:
+            List of statement block dictionaries
+        """
+        all_blocks = []
+        
+        for proc in procedures:
+            for block in proc.get('statement_blocks', []):
+                # Add procedure context to each block
+                block_with_context = block.copy()
+                block_with_context['parent_procedure'] = proc['name']
+                block_with_context['parent_procedure_type'] = proc.get('type', 'procedure')
+                
+                # Convert sets to lists for JSON serialization
+                if 'variables_used' in block_with_context and isinstance(block_with_context['variables_used'], set):
+                    block_with_context['variables_used'] = list(block_with_context['variables_used'])
+                
+                all_blocks.append(block_with_context)
+        
+        return all_blocks
 
 
 def main():
