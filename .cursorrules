@@ -92,6 +92,9 @@ Use TDD approach : always write tests before creating new function or file
 - **Violation Node Creation**: Materialize violations as distinct graph nodes with rich metadata
 - **Relationship Mapping**: Create `VIOLATES_RULE` and `VIOLATES_ELEMENT` relationships
 - **Graph Analytics**: Enable complex violation analysis through graph traversal
+- **Mandatory COBOL Linking**: Ensure every violation is linked to a COBOL node (program, variable, procedure, or statement block)
+- **Fallback Linking**: When specific COBOL elements aren't found, link violations to the COBOL program node
+- **Dual Relationship Creation**: Every violation gets both VIOLATES_RULE and VIOLATES_ELEMENT relationships
 
 ### COBOL CST Parser (`src/cobol_cst_parser.py`)
 - Tree-sitter-based Concrete Syntax Tree parsing
@@ -114,6 +117,8 @@ Use TDD approach : always write tests before creating new function or file
 - **Violation Materialization**: Violations are materialized as distinct nodes in the graph
 - **Graph Integration**: Each violation becomes a first-class citizen with relationships to DSL rules and COBOL elements
 - **Rich Metadata**: Violations include severity, source location, affected elements, and business context
+- **Mandatory COBOL Linking**: Every violation MUST be linked to a COBOL node via VIOLATES_ELEMENT relationship
+- **Dual Relationships**: Violations have both VIOLATES_RULE (to DSL rules) and VIOLATES_ELEMENT (to COBOL nodes) relationships
 
 ### COBOL Generator (`src/cobol_generator.py`)
 - Generate compliant COBOL examples from DSL using AI or templates
@@ -142,6 +147,8 @@ Use TDD approach : always write tests before creating new function or file
 - **Violation Materialization**: Violations are materialized as distinct nodes in the graph
 - **Graph Analytics**: Enable complex queries and analysis through violation relationships
 - **First-Class Citizens**: Violations have the same status as rules and code elements
+- **Mandatory COBOL Linking**: Every violation MUST be connected to a COBOL node via VIOLATES_ELEMENT relationship
+- **Complete Relationship Coverage**: Violations have dual relationships: VIOLATES_RULE (to DSL rules) and VIOLATES_ELEMENT (to COBOL nodes)
 
 ### 2. DSL Extensibility & Multi-Program Support
 - Design DSL to be easily extensible
