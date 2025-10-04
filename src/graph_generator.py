@@ -133,7 +133,7 @@ class GraphGenerator:
                 "description": f"DSL requirement: {req.name}",
                 "data": {
                     "rule_name": rule.name,
-                    "condition": req.condition,
+                    "check": req.check,
                     "description": req.description
                 }
             }
@@ -356,13 +356,13 @@ class GraphGenerator:
                 
                 if not has_match:
                     violation = Violation(
-                    rule_name=rule_name,
-                            element_name=var_name,
-                            violation_message=f"DSL variable {var_name} not implemented in COBOL code",
-                    severity="HIGH",
-                    element_type="variable"
-                )
-                violations.append(violation)
+                        rule_name=rule_name,
+                        element_name=var_name,
+                        violation_message=f"DSL variable {var_name} not implemented in COBOL code",
+                        severity="HIGH",
+                        element_type="variable"
+                        )
+                    violations.append(violation)
         
         # Check for missing DSL requirement implementations
         for dsl_req in self.graph["nodes"]:
@@ -380,13 +380,13 @@ class GraphGenerator:
                 
                 if not has_match:
                     violation = Violation(
-                    rule_name=rule_name,
-                            element_name=req_name,
-                            violation_message=f"DSL requirement {req_name} not implemented in COBOL code",
-                            severity="HIGH",
-                    element_type="requirement"
-                )
-                violations.append(violation)
+                        rule_name=rule_name,
+                        element_name=req_name,
+                        violation_message=f"DSL requirement {req_name} not implemented in COBOL code",
+                        severity="HIGH",
+                        element_type="requirement"
+                    )
+                    violations.append(violation)
         
         self.graph["metadata"]["total_violations"] = len(violations)
         return violations
@@ -402,15 +402,15 @@ class GraphGenerator:
             True if save successful, False otherwise
         """
         try:
-        output_path = Path(filepath)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(self.graph, f, indent=2, ensure_ascii=False)
-        
-        # Also save to Neo4j if available
+            output_path = Path(filepath)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(self.graph, f, indent=2, ensure_ascii=False)
+            
+            # Also save to Neo4j if available
             if self.neo4j_available:
-        self.save_to_neo4j(session_name=f"session_{output_path.stem}")
+                self.save_to_neo4j(session_name=f"session_{output_path.stem}")
             
             return True
         except Exception as e:
@@ -429,32 +429,18 @@ class GraphGenerator:
         """
         if not self.neo4j_available:
             logger.warning("Neo4j not available, skipping database save")
-        return False
+            return False
         
         try:
             # Clear existing session data
             self.neo4j_adapter.clear_session(session_name)
             
-            # Create nodes
-        for node in self.graph["nodes"]:
-                self.neo4j_adapter.create_node(
-                    node_id=node["id"],
-                    labels=[node["type"].title()],
-                    properties=node["data"]
-                )
-            
-            # Create relationships
-        for edge in self.graph["edges"]:
-                self.neo4j_adapter.create_relationship(
-                    from_node=edge["from"],
-                    to_node=edge["to"],
-                    relationship_type=edge["type"],
-                    properties={"description": edge["description"]}
-                )
+            # Save entire graph to Neo4j
+            success = self.neo4j_adapter.save_graph(self.graph, session_name)
             
             logger.info(f"Graph saved to Neo4j session: {session_name}")
             return True
         
         except Exception as e:
             logger.error(f"Failed to save to Neo4j: {e}")
-        return False
+            return False

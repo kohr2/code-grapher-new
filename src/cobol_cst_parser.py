@@ -508,8 +508,8 @@ class COBOLCSTParser:
                 continue
             
             # Look for variable definitions with various patterns
-            # Pattern 1: 01  VARIABLE-NAME PIC X(10)
-            var_match = re.match(r'(\d+)\s+(\S+)\s+PIC\s+(\S+)', line_clean, re.IGNORECASE)
+            # Pattern 1: 000100 01  VARIABLE-NAME PIC X(10) (with line numbers)
+            var_match = re.match(r'\d+\s+(\d+)\s+(\S+)\s+PIC\s+(\S+)', line_clean, re.IGNORECASE)
             if var_match:
                 level = var_match.group(1)
                 name = var_match.group(2)
@@ -544,8 +544,43 @@ class COBOLCSTParser:
                 parent_stack.append(var)
                 continue
             
-            # Pattern 2: 01  VARIABLE-NAME VALUE 'SOME VALUE'
-            var_value_match = re.match(r'(\d+)\s+(\S+)\s+VALUE\s+(.+)', line_clean, re.IGNORECASE)
+            # Pattern 2: 000100 01  VARIABLE-NAME (without PIC clause)
+            var_simple_match = re.match(r'\d+\s+(\d+)\s+(\S+)\.?\s*$', line_clean, re.IGNORECASE)
+            if var_simple_match:
+                level = var_simple_match.group(1)
+                name = var_simple_match.group(2)
+                
+                # Clean up line number prefix if present
+                if name.startswith('000'):
+                    name = name[6:]
+                
+                # Manage parent hierarchy
+                level_num = int(level)
+                if level_num == 1:
+                    parent_stack = []
+                    current_parent = None
+                else:
+                    # Find appropriate parent based on level
+                    while parent_stack and int(parent_stack[-1].level) >= level_num:
+                        parent_stack.pop()
+                    current_parent = parent_stack[-1].name if parent_stack else None
+                
+                var = COBOLVariable(
+                    name=name,
+                    level=level,
+                    value=None,
+                    parent=current_parent,
+                    children=[],
+                    line_number=line_num
+                )
+                variables.append(var)
+                
+                # Add to parent stack
+                parent_stack.append(var)
+                continue
+            
+            # Pattern 3: 000100 01  VARIABLE-NAME VALUE 'SOME VALUE' (with line numbers)
+            var_value_match = re.match(r'\d+\s+(\d+)\s+(\S+)\s+VALUE\s+(.+)', line_clean, re.IGNORECASE)
             if var_value_match:
                 level = var_value_match.group(1)
                 name = var_value_match.group(2)

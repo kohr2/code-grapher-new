@@ -357,6 +357,9 @@ def analyze_cobol_file(cobol_file: str, rules_dir: str = "rules", output_dir: st
             cobol_nodes = graph_gen.generate_cobol_nodes_from_cst(cst_analysis, program_name)
             rprint(f"✅ Generated {len(cobol_nodes)} COBOL nodes from CST analysis")
             
+            # Add COBOL nodes to the graph
+            graph_gen.graph["nodes"].extend(cobol_nodes)
+            
         except Exception as cst_error:
             rprint(f"[yellow]⚠️ CST parsing failed: {cst_error}[/yellow]")
             rprint("   Falling back to basic file analysis...")
@@ -490,6 +493,9 @@ def analyze_cobol_file_with_rules(cobol_file: str, rules: List[Any], output_dir:
             # Generate graph nodes from CST analysis
             cobol_nodes = graph_gen.generate_cobol_nodes_from_cst(cst_analysis, program_name)
             rprint(f"✅ Generated {len(cobol_nodes)} COBOL nodes from CST analysis")
+            
+            # Add COBOL nodes to the graph
+            graph_gen.graph["nodes"].extend(cobol_nodes)
             
         except Exception as cst_error:
             rprint(f"[yellow]⚠️ CST parsing failed: {cst_error}[/yellow]")
