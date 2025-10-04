@@ -72,11 +72,145 @@ class GraphGenerator:
             }
         }
         self._node_counter = 0
-        self._rule_index = {}  # Maps rule names to node IDs
         
         # Initialize Neo4j adapter
+        from neo4j_adapter import Neo4jAdapter
         self.neo4j_adapter = Neo4jAdapter()
         self.neo4j_available = self.neo4j_adapter.is_available()
+        self._rule_index = {}  # Maps rule names to node IDs
+    
+    def create_basic_cobol_elements(self, program_name: str, cobol_content: str) -> List[Dict[str, Any]]:
+        """
+        Create basic atomic COBOL elements from content when CST parsing is not available
+        
+        Args:
+            program_name: Name of the COBOL program
+            cobol_content: Raw COBOL file content
+            
+        Returns:
+            List of basic COBOL element nodes
+        """
+        nodes = []
+        
+        # Create program node
+        program_node = {
+            "id": f"prog_{program_name.lower().replace('-', '_')}",
+            "type": "cobol_program",
+            "name": program_name,
+            "description": f"COBOL program: {program_name}",
+            "source_file": program_name + ".cob",
+            "data": {
+                "program_name": program_name,
+                "parsing_method": "basic",
+                "file_size": len(cobol_content),
+                "line_count": len(cobol_content.split('\n'))
+            }
+        }
+        nodes.append(program_node)
+        
+        # Extract basic elements from COBOL content
+        lines = cobol_content.split('\n')
+        
+        # Extract divisions
+        divisions = []
+        for i, line in enumerate(lines):
+            line_clean = line.strip()
+            if line_clean.endswith('DIVISION.'):
+                division_name = line_clean.replace('DIVISION.', '').strip()
+                if division_name:
+                    division_node = {
+                        "id": f"div_{division_name.lower().replace(' ', '_')}_{program_name.lower()}",
+                        "type": "cobol_division",
+                        "name": division_name,
+                        "description": f"COBOL division: {division_name}",
+                        "source_file": program_name + ".cob",
+                        "data": {
+                            "division_name": division_name,
+                            "line_number": i + 1,
+                            "parsing_method": "basic"
+                        }
+                    }
+                    nodes.append(division_node)
+                    divisions.append(division_name)
+        
+        # Extract sections
+        sections = []
+        for i, line in enumerate(lines):
+            line_clean = line.strip()
+            if line_clean.endswith('SECTION.'):
+                section_name = line_clean.replace('SECTION.', '').strip()
+                if section_name:
+                    section_node = {
+                        "id": f"sec_{section_name.lower().replace(' ', '_')}_{program_name.lower()}",
+                        "type": "cobol_section",
+                        "name": section_name,
+                        "description": f"COBOL section: {section_name}",
+                        "source_file": program_name + ".cob",
+                        "data": {
+                            "section_name": section_name,
+                            "line_number": i + 1,
+                            "parsing_method": "basic"
+                        }
+                    }
+                    nodes.append(section_node)
+                    sections.append(section_name)
+        
+        # Extract procedures/paragraphs
+        procedures = []
+        for i, line in enumerate(lines):
+            line_clean = line.strip()
+            # Look for procedure/paragraph names (typically start with numbers or are standalone)
+            if (line_clean and not line_clean.startswith('*') and 
+                not line_clean.endswith('.') and 
+                not line_clean.endswith('DIVISION') and
+                not line_clean.endswith('SECTION') and
+                len(line_clean.split()) == 1 and
+                line_clean.isupper()):
+                proc_name = line_clean
+                if proc_name not in procedures:
+                    proc_node = {
+                        "id": f"proc_{proc_name.lower().replace('-', '_')}_{program_name.lower()}",
+                        "type": "cobol_procedure",
+                        "name": proc_name,
+                        "description": f"COBOL procedure: {proc_name}",
+                        "source_file": program_name + ".cob",
+                        "data": {
+                            "procedure_name": proc_name,
+                            "line_number": i + 1,
+                            "parsing_method": "basic"
+                        }
+                    }
+                    nodes.append(proc_node)
+                    procedures.append(proc_name)
+        
+        # Extract variables (basic pattern matching)
+        variables = []
+        for i, line in enumerate(lines):
+            line_clean = line.strip()
+            # Look for variable definitions (01, 02, etc.)
+            if (line_clean and 
+                len(line_clean.split()) >= 2 and
+                line_clean.split()[0].isdigit() and
+                int(line_clean.split()[0]) <= 49):  # COBOL level numbers
+                var_name = line_clean.split()[1]
+                if var_name not in variables:
+                    var_node = {
+                        "id": f"var_{var_name.lower().replace('-', '_')}_{program_name.lower()}",
+                        "type": "cobol_variable",
+                        "name": var_name,
+                        "description": f"COBOL variable: {var_name}",
+                        "source_file": program_name + ".cob",
+                        "data": {
+                            "variable_name": var_name,
+                            "level_number": int(line_clean.split()[0]),
+                            "line_number": i + 1,
+                            "parsing_method": "basic"
+                        }
+                    }
+                    nodes.append(var_node)
+                    variables.append(var_name)
+        
+        return nodes
     
     def add_dsl_rule(self, rule: DSLRule) -> None:
         """
@@ -446,48 +580,64 @@ class GraphGenerator:
                 }
                 self.graph["edges"].append(violation_edge)
             
-            # Create edge from violation to the COBOL element that caused it
+            # Create edge from violation to the most atomic COBOL element
+            cobol_element_id = None
+            
             if violation.code_element:
-                # Find the COBOL element node
-                cobol_element_id = None
-                for node in self.graph["nodes"]:
-                    if (node["type"] in ["cobol_variable", "cobol_procedure", "cobol_statement_block"] and 
-                        node["name"] == violation.code_element):
-                        cobol_element_id = node["id"]
-                        break
+                # Priority order: statement > variable > section > procedure > statement_block > program
+                priority_types = [
+                    "cobol_statement",
+                    "cobol_variable", 
+                    "cobol_section",
+                    "cobol_procedure",
+                    "cobol_statement_block",
+                    "cobol_program"
+                ]
                 
-                # If specific element not found, link to the COBOL program
-                if not cobol_element_id:
+                # Find the most atomic COBOL element that matches
+                for node_type in priority_types:
                     for node in self.graph["nodes"]:
-                        if node["type"] == "cobol_program":
+                        if (node["type"] == node_type and 
+                            node["name"] == violation.code_element):
                             cobol_element_id = node["id"]
                             break
-                
-                if cobol_element_id:
-                    element_edge = {
-                        "from": violation_id,
-                        "to": cobol_element_id,
-                        "type": "VIOLATES_ELEMENT",
-                        "description": f"Violation affects element: {violation.code_element}"
-                    }
-                    self.graph["edges"].append(element_edge)
-            else:
-                # If no code_element specified, link to the COBOL program
-                for node in self.graph["nodes"]:
-                    if node["type"] == "cobol_program":
-                        element_edge = {
-                            "from": violation_id,
-                            "to": node["id"],
-                            "type": "VIOLATES_ELEMENT",
-                            "description": f"Violation affects program: {node['name']}"
-                        }
-                        self.graph["edges"].append(element_edge)
+                    if cobol_element_id:
                         break
+            
+            # If no specific element found, find the most atomic element available
+            if not cobol_element_id:
+                priority_types = [
+                    "cobol_statement",
+                    "cobol_variable", 
+                    "cobol_section",
+                    "cobol_procedure",
+                    "cobol_statement_block",
+                    "cobol_program"
+                ]
+                
+                for node_type in priority_types:
+                    for node in self.graph["nodes"]:
+                        if node["type"] == node_type:
+                            cobol_element_id = node["id"]
+                            break
+                    if cobol_element_id:
+                        break
+            
+            if cobol_element_id:
+                # Find the target node for description
+                target_node = next(node for node in self.graph["nodes"] if node["id"] == cobol_element_id)
+                element_edge = {
+                    "from": violation_id,
+                    "to": cobol_element_id,
+                    "type": "VIOLATES_ELEMENT",
+                    "description": f"Violation affects {target_node['type']}: {target_node['name']}"
+                }
+                self.graph["edges"].append(element_edge)
         
         # Update metadata
         self.graph["metadata"]["total_violations"] = len(violations)
         self.graph["metadata"]["violations_count"] = len(violations)
-
+    
     def detect_violations(self) -> List[Violation]:
         """
         Detect policy violations in the graph

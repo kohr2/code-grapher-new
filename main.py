@@ -373,25 +373,16 @@ def analyze_cobol_file(cobol_file: str, rules_dir: str = "rules", output_dir: st
             with open(cobol_path, 'r', encoding='utf-8', errors='ignore') as f:
                 cobol_content = f.read()
             
-            # Create basic nodes for the COBOL file
+            # Create basic atomic elements for the COBOL file
             program_name = cobol_path.stem.upper()
-            graph_gen.graph["nodes"].append({
-                "id": f"program_{program_name}",
-                "type": "cobol_program",
-                "name": program_name,
-                "description": f"COBOL Program: {program_name}",
-                "data": {
-                    "source_file": str(cobol_path),
-                    "file_size": len(cobol_content),
-                    "line_count": len(cobol_content.split('\n'))
-                }
-            })
-            rprint(f"✅ Created basic program node: {program_name}")
+            basic_nodes = graph_gen.create_basic_cobol_elements(program_name, cobol_content)
+            graph_gen.graph["nodes"].extend(basic_nodes)
+            rprint(f"✅ Created {len(basic_nodes)} basic COBOL elements: {program_name}")
         
         # Step 4: Connect COBOL elements to DSL rules
         rprint("\n[yellow]🔗 Step 4: Connecting COBOL elements to DSL rules...[/yellow]")
         # Get all COBOL nodes from the graph
-        cobol_nodes = [node for node in graph_gen.graph["nodes"] if node["type"] in ["cobol_program", "cobol_variable", "cobol_procedure"]]
+        cobol_nodes = [node for node in graph_gen.graph["nodes"] if node["type"] in ["cobol_program", "cobol_variable", "cobol_procedure", "cobol_division", "cobol_section"]]
         graph_gen.connect_cobol_to_rules(cobol_nodes)
         rprint(f"✅ Connected {len(cobol_nodes)} COBOL elements to DSL rules")
         
@@ -533,7 +524,7 @@ def analyze_cobol_file_with_rules(cobol_file: str, rules: List[Any], output_dir:
         # Step 3: Connect COBOL elements to DSL rules
         rprint("🔗 Connecting COBOL elements to DSL rules...")
         # Get all COBOL nodes from the graph
-        cobol_nodes = [node for node in graph_gen.graph["nodes"] if node["type"] in ["cobol_program", "cobol_variable", "cobol_procedure"]]
+        cobol_nodes = [node for node in graph_gen.graph["nodes"] if node["type"] in ["cobol_program", "cobol_variable", "cobol_procedure", "cobol_division", "cobol_section"]]
         graph_gen.connect_cobol_to_rules(cobol_nodes)
         rprint(f"✅ Connected {len(cobol_nodes)} COBOL elements to DSL rules")
         
