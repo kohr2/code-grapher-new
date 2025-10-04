@@ -386,16 +386,20 @@ class COBOLCSTParser:
         current_division = None
         
         for line_num, line in enumerate(lines, 1):
-            line_upper = line.upper().strip()
+            line_clean = line.strip()
+            line_upper = line_clean.upper()
             
             # Check for division headers
             if ' DIVISION' in line_upper:
-                # Extract division name
+                # Extract division name - handle line numbers properly
                 division_name = line_upper.replace(' DIVISION', '').strip()
                 
-                # Clean up line number prefix if present
+                # Clean up line number prefix if present (e.g., "000100 IDENTIFICATION" -> "IDENTIFICATION")
                 if division_name.startswith('000'):
-                    division_name = division_name[6:]  # Remove line number prefix
+                    # Find the first space after the line number
+                    space_pos = division_name.find(' ')
+                    if space_pos > 0:
+                        division_name = division_name[space_pos:].strip()
                 
                 current_division = {
                     'name': division_name,
@@ -410,9 +414,12 @@ class COBOLCSTParser:
             elif current_division and ' SECTION' in line_upper:
                 section_name = line_upper.replace(' SECTION', '').strip()
                 
-                # Clean up line number prefix if present
+                # Clean up line number prefix if present (e.g., "000800 CONFIGURATION" -> "CONFIGURATION")
                 if section_name.startswith('000'):
-                    section_name = section_name[6:]  # Remove line number prefix
+                    # Find the first space after the line number
+                    space_pos = section_name.find(' ')
+                    if space_pos > 0:
+                        section_name = section_name[space_pos:].strip()
                 
                 section = {
                     'name': section_name,
@@ -719,9 +726,12 @@ class COBOLCSTParser:
                 # This is a paragraph name
                 paragraph_name = line_clean
                 
-                # Clean up line number prefix if present
+                # Clean up line number prefix if present (e.g., "021600 0000-MAIN-CONTROL SECTION" -> "0000-MAIN-CONTROL SECTION")
                 if paragraph_name.startswith('000'):
-                    paragraph_name = paragraph_name[6:]  # Remove line number prefix
+                    # Find the first space after the line number
+                    space_pos = paragraph_name.find(' ')
+                    if space_pos > 0:
+                        paragraph_name = paragraph_name[space_pos:].strip()
                 
                 # Determine if it's a section or paragraph
                 proc_type = 'section' if 'SECTION' in paragraph_name.upper() else 'paragraph'
