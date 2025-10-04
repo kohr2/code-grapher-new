@@ -300,7 +300,7 @@ class RuleDetector:
                         message="Incomplete fraud rule execution - only 2 out of 10 required rules executed",
                         severity="CRITICAL",
                         requirement="fraud_rule_execution",
-                        code_element="fraud_detection_rules",
+                        code_element=program.get("name", "UNKNOWN_PROGRAM"),
                         source_file=program.get("source_file"),
                         line_number=203,
                         dsl_rule=rule.get("name")
@@ -313,7 +313,7 @@ class RuleDetector:
                         message="Neural network scoring not implemented - PERFORM 4100-NEURAL-NETWORK-SCORING missing",
                         severity="HIGH",
                         requirement="neural_network_scoring",
-                        code_element="advanced_analytics",
+                        code_element=program.get("name", "UNKNOWN_PROGRAM"),
                         source_file=program.get("source_file"),
                         line_number=234,
                         dsl_rule=rule.get("name")
@@ -326,7 +326,7 @@ class RuleDetector:
                         message="Pattern detection algorithms incomplete - missing round dollar, ascending amount, and test transaction pattern checks",
                         severity="HIGH",
                         requirement="pattern_detection",
-                        code_element="pattern_recognition",
+                        code_element=program.get("name", "UNKNOWN_PROGRAM"),
                         source_file=program.get("source_file"),
                         line_number=238,
                         dsl_rule=rule.get("name")
@@ -339,7 +339,7 @@ class RuleDetector:
                         message="Behavioral biometric analysis missing - typing patterns, device fingerprinting, and session behavior analysis not implemented",
                         severity="MEDIUM",
                         requirement="biometric_analysis",
-                        code_element="behavioral_biometrics",
+                        code_element=program.get("name", "UNKNOWN_PROGRAM"),
                         source_file=program.get("source_file"),
                         line_number=243,
                         dsl_rule=rule.get("name")

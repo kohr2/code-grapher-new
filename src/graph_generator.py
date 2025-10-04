@@ -451,10 +451,17 @@ class GraphGenerator:
                 # Find the COBOL element node
                 cobol_element_id = None
                 for node in self.graph["nodes"]:
-                    if (node["type"] in ["cobol_variable", "cobol_procedure"] and 
+                    if (node["type"] in ["cobol_variable", "cobol_procedure", "cobol_statement_block"] and 
                         node["name"] == violation.code_element):
                         cobol_element_id = node["id"]
                         break
+                
+                # If specific element not found, link to the COBOL program
+                if not cobol_element_id:
+                    for node in self.graph["nodes"]:
+                        if node["type"] == "cobol_program":
+                            cobol_element_id = node["id"]
+                            break
                 
                 if cobol_element_id:
                     element_edge = {
@@ -464,6 +471,18 @@ class GraphGenerator:
                         "description": f"Violation affects element: {violation.code_element}"
                     }
                     self.graph["edges"].append(element_edge)
+            else:
+                # If no code_element specified, link to the COBOL program
+                for node in self.graph["nodes"]:
+                    if node["type"] == "cobol_program":
+                        element_edge = {
+                            "from": violation_id,
+                            "to": node["id"],
+                            "type": "VIOLATES_ELEMENT",
+                            "description": f"Violation affects program: {node['name']}"
+                        }
+                        self.graph["edges"].append(element_edge)
+                        break
         
         # Update metadata
         self.graph["metadata"]["total_violations"] = len(violations)
