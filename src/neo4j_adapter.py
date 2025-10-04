@@ -49,7 +49,7 @@ class Neo4jConfig:
         """Create Neo4j config from environment variables"""
         return cls(
             uri=os.getenv('NEO4J_URI', 'bolt://localhost:7687'),
-            user=os.getenv('NEO4J_USER', 'neo4j'),
+            user=os.getenv('NEO4J_USERNAME', os.getenv('NEO4J_USER', 'neo4j')),
             password=os.getenv('NEO4J_PASSWORD', ''),
             database=os.getenv('NEO4J_DATABASE', 'neo4j')
         )
@@ -139,7 +139,7 @@ class Neo4jAdapter:
             return False
     
     def _create_node(self, session, node_data: Dict[str, Any], session_name: str) -> None:
-        """Create a node in Neo4j"""
+        """Create a node in Neo4j with proper hierarchical relationships"""
         node_type = node_data.get("type", "Unknown")
         node_id = node_data.get("id", "")
         
@@ -169,14 +169,84 @@ class Neo4jAdapter:
         if "parent_rule" in node_data:
             labels.append("DSLComponent")
         
+        # Create the node
         query = f"""
             CREATE (n:{':'.join(labels)} $properties)
-            WITH n
-            MATCH (s:StacktalkSession {{name: $session_name}})
-            CREATE (s)-[:CONTAINS]->(n)
         """
+        session.run(query, properties=properties)
         
-        session.run(query, properties=properties, session_name=session_name)
+        # Create hierarchical relationships based on node type
+        self._create_hierarchical_relationships(session, node_data, session_name)
+        
+        # Only connect cobolprogram nodes to session, others use hierarchical relationships
+        if node_type == "cobol_program":
+            session.run("""
+                MATCH (n {id: $node_id}), (s:StacktalkSession {name: $session_name})
+                CREATE (s)-[:CONTAINS]->(n)
+            """, node_id=node_id, session_name=session_name)
+    
+    def _create_hierarchical_relationships(self, session, node_data: Dict[str, Any], session_name: str) -> None:
+        """Create proper hierarchical relationships between COBOL elements"""
+        node_type = node_data.get("type", "")
+        node_id = node_data.get("id", "")
+        node_name = node_data.get("name", "")
+        data = node_data.get("data", {})
+        
+        # Connect statements to their parent procedures
+        if node_type == "cobol_statement":
+            parent_procedure = data.get("parent_procedure")
+            if parent_procedure:
+                # Find the procedure node and create HAS_STATEMENT relationship
+                session.run("""
+                    MATCH (proc:cobolprocedure {name: $proc_name, session: $session_name})
+                    MATCH (stmt {id: $stmt_id})
+                    CREATE (proc)-[:HAS_STATEMENT]->(stmt)
+                """, proc_name=parent_procedure, session_name=session_name, stmt_id=node_id)
+        
+        # Connect variables to their parent programs and create variable hierarchy
+        elif node_type == "cobol_variable":
+            # Find the program node from the same session and create HAS_VARIABLE relationship
+            session.run("""
+                MATCH (prog:cobolprogram {session: $session_name})
+                MATCH (var {id: $var_id})
+                CREATE (prog)-[:HAS_VARIABLE]->(var)
+            """, session_name=session_name, var_id=node_id)
+            
+            # Create variable hierarchy (parent-child relationships)
+            parent_name = data.get("parent")
+            if parent_name and parent_name.strip():
+                session.run("""
+                    MATCH (parent:cobolvariable {name: $parent_name, session: $session_name})
+                    MATCH (child {id: $child_id})
+                    CREATE (parent)-[:HAS_CHILD_VARIABLE]->(child)
+                """, parent_name=parent_name, session_name=session_name, child_id=node_id)
+        
+        # Connect procedures to their parent programs
+        elif node_type == "cobol_procedure":
+            # Find the program node from the same session and create HAS_PROCEDURE relationship
+            session.run("""
+                MATCH (prog:cobolprogram {session: $session_name})
+                MATCH (proc {id: $proc_id})
+                CREATE (prog)-[:HAS_PROCEDURE]->(proc)
+            """, session_name=session_name, proc_id=node_id)
+        
+        # Connect sections to their parent divisions
+        elif node_type == "cobol_section":
+            parent_division = data.get("parent_division")
+            if parent_division:
+                session.run("""
+                    MATCH (div:coboldivision {name: $div_name, session: $session_name})
+                    MATCH (sec {id: $sec_id})
+                    CREATE (div)-[:HAS_SECTION]->(sec)
+                """, div_name=parent_division, session_name=session_name, sec_id=node_id)
+        
+        # Connect divisions to their parent programs
+        elif node_type == "cobol_division":
+            session.run("""
+                MATCH (prog:cobolprogram {session: $session_name})
+                MATCH (div {id: $div_id})
+                CREATE (prog)-[:HAS_DIVISION]->(div)
+            """, session_name=session_name, div_id=node_id)
     
     def _create_edge(self, session, edge_data: Dict[str, Any], session_name: str) -> None:
         """Create an edge/relationship in Neo4j"""
