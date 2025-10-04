@@ -88,7 +88,11 @@ This will:
 1. ✅ Parse DSL rules from `rules/*.dsl` files (global rules)
 2. ✅ Generate graph from DSL rules (variables, requirements, logic)
 3. ✅ **Generate AI-powered COBOL** examples using OpenAI (if API key available)
-4. ✅ **Parse COBOL code with Tree-sitter CST** into graph (programs, variables, procedures, hierarchical structures)
+4. ✅ **Parse COBOL code with Tree-sitter CST** into complete hierarchical structure:
+   - **Divisions**: IDENTIFICATION, ENVIRONMENT, DATA, PROCEDURE
+   - **Sections**: CONFIGURATION, INPUT-OUTPUT, FILE sections within divisions
+   - **Paragraphs**: Sections and paragraphs within PROCEDURE DIVISION
+   - **Statement Blocks**: Logical grouping of related statements (PERFORM, IF, EVALUATE blocks)
 5. ✅ Connect every code element to applicable DSL rules
 6. ✅ Analyze graph for policy violations
 7. ✅ Generate text report
@@ -119,16 +123,20 @@ You'll see output like:
 ============================================================
 📋 Loaded rule: NSF Banking Rule (4 variables, 3 requirements)
 🧠 AI COBOL Generation: Enabled (OpenAI GPT-4)
-🌳 Tree-sitter CST Parser: Enabled (Comprehensive COBOL parsing)
+🌳 Tree-sitter CST Parser: Enabled (Complete COBOL hierarchical structure)
 ✅ Generated AI-powered COBOL examples
 ✅ Generated graph from DSL rules
-✅ Parsed COBOL code with Tree-sitter CST into graph
+✅ Parsed COBOL code with complete hierarchical structure:
+   📁 Divisions: IDENTIFICATION, ENVIRONMENT, DATA, PROCEDURE
+   📂 Sections: CONFIGURATION, INPUT-OUTPUT, FILE sections
+   📄 Paragraphs: Sections and paragraphs within PROCEDURE DIVISION
+   🧩 Statement Blocks: PERFORM, IF, EVALUATE logical blocks
 ✅ Connected code elements to DSL rules
 🔍 Analyzing graph for violations...
    ❌ Found 3 violations in violation.cob (AI-generated sophisticated violations)
    ✅ No violations in compliant.cob (AI-generated compliant logic)
 
-📊 Graph Statistics: 15 nodes, 12 edges, 50% compliance
+📊 Graph Statistics: 1352 nodes, 24 edges, 50% compliance
 ✅ Graph saved: output/graph.json
 ✅ Report generated: output/report.html
 ```
@@ -140,7 +148,9 @@ Open `output/report.html` to see:
 - Detailed violation reports with syntax highlighting
 - Graph statistics and compliance metrics
 - **AI-generated COBOL** with sophisticated business logic and enterprise patterns
+- **Complete COBOL hierarchical structure** with divisions, sections, paragraphs, and statement blocks
 - **Code-to-rule connections** showing which DSL rules apply to each code element
+- **Statement block analysis** showing logical grouping of related statements
 - Audit-ready formatting
 
 ## Step 6: Customize Rules (1 minute)
@@ -164,9 +174,10 @@ cat output/batch_banking/graph.json
 
 # Graph shows comprehensive connections:
 # - DSL Rule nodes → Variable nodes → Requirement nodes
-# - COBOL Program nodes → Variable nodes → Procedure nodes  
+# - COBOL Program nodes → Division nodes → Section nodes → Paragraph nodes → Statement Block nodes
 # - Code variables connected to DSL rule variables
 # - Violations linked to specific code elements and rules
+# - Complete hierarchical structure: Divisions → Sections → Paragraphs → Statement Blocks
 # - Rule source tracking (global/program-specific/local)
 ```
 
@@ -201,9 +212,19 @@ DSL Rule "NSF Banking Rule"
 └── Requirement: nsf_fee_application
 
 COBOL Program "WITHDRAWAL-PROCESS"  
+├── Division: PROCEDURE DIVISION
+│   ├── Section: 0000-MAIN-CONTROL
+│   │   ├── Paragraph: 0000-MAIN-PROCESS
+│   │   │   ├── Statement Block: PERFORM_BLOCK
+│   │   │   └── Statement Block: TERMINATION_BLOCK
+│   │   └── Paragraph: 1000-INITIALIZE-PROGRAM
+│   │       ├── Statement Block: FILE_OPERATION_BLOCK
+│   │       └── Statement Block: SEQUENTIAL_BLOCK
+│   └── Section: 2000-PROCESS-TRANSACTIONS
+│       ├── Paragraph: PROCESS-NSF ← Connected to DSL requirements
+│       └── Statement Block: CONDITIONAL_BLOCK
 ├── Variable: NSF-LOG-FLAG ← Connected to DSL rule variable
 ├── Variable: NSF-FEE ← Connected to DSL rule variable
-├── Procedure: PROCESS-NSF ← Connected to DSL requirements
 └── Violation: Missing logging ← Linked to specific requirement
 ```
 
@@ -324,7 +345,7 @@ stacktalk-demo/
 ✅ **DSL-Driven**: Rules in YAML, not hardcoded  
 ✅ **Graph-Enabled**: Rich data representation with **complete code-to-rule mapping**  
 ✅ **AI-Powered**: OpenI-generated enterprise-grade COBOL with domain expertise
-✅ **CST-Parsed**: Tree-sitter-based comprehensive COBOL parsing with hierarchical structure
+✅ **CST-Parsed**: Tree-sitter-based comprehensive COBOL parsing with complete hierarchical structure (Divisions → Sections → Paragraphs → Statement Blocks)
 ✅ **Modular**: Independent components with API integration
 ✅ **Multi-Program**: Each program directory can have its own DSL rules
 ✅ **Rule Inheritance**: Local > Program-specific > Global rule precedence

@@ -95,10 +95,14 @@ Use TDD approach : always write tests before creating new function or file
 
 ### COBOL CST Parser (`src/cobol_cst_parser.py`)
 - Tree-sitter-based Concrete Syntax Tree parsing
-- Comprehensive COBOL structure recognition (divisions, sections, paragraphs)
+- **Complete COBOL Hierarchical Structure**: Divisions → Sections → Paragraphs → Statement Blocks
+- **Division Recognition**: IDENTIFICATION, ENVIRONMENT, DATA, PROCEDURE divisions
+- **Section Parsing**: CONFIGURATION, INPUT-OUTPUT, FILE sections with proper line number handling
+- **Procedure Analysis**: Sections and paragraphs within PROCEDURE DIVISION
+- **Statement Block Grouping**: Logical grouping of related statements (PERFORM, IF, EVALUATE blocks)
 - Hierarchical data structure parsing (01, 02, 03 level variables)
-- Procedure and statement analysis with semantic understanding
 - Support for multiple COBOL dialects and enterprise patterns
+- **Line Number Handling**: Proper parsing of COBOL files with line numbers (000100, 000200, etc.)
 
 ### Rule Detector (`src/rule_detector.py`)
 - Analyze graph for policy violations
@@ -153,9 +157,14 @@ Use TDD approach : always write tests before creating new function or file
 
 ### 3. CST-Based COBOL Parsing
 - Use Tree-sitter with COBOL grammar for comprehensive parsing
-- Parse complete COBOL structure including divisions, sections, paragraphs
+- **Complete Hierarchical Structure**: Parse Divisions → Sections → Paragraphs → Statement Blocks
+- **Division-Level Analysis**: IDENTIFICATION, ENVIRONMENT, DATA, PROCEDURE divisions
+- **Section-Level Analysis**: CONFIGURATION, INPUT-OUTPUT, FILE sections within divisions
+- **Procedure-Level Analysis**: Sections and paragraphs within PROCEDURE DIVISION
+- **Statement Block Analysis**: Group related statements into logical blocks (PERFORM, IF, EVALUATE)
 - Extract hierarchical data relationships and semantic meaning
 - Support enterprise COBOL patterns and complex business logic
+- **Line Number Support**: Handle COBOL files with line numbers (000100, 000200, etc.)
 - Integrate CST parser with graph generation for complete code analysis
 
 ### 4. AI Integration
