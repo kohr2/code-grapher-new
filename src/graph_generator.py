@@ -417,6 +417,27 @@ class GraphGenerator:
                     }
                 }
                 nodes.append(sec_node)
+                
+                # Create edge from division to section
+                div_sec_edge = {
+                    "from": div_node["id"],
+                    "to": sec_node["id"],
+                    "type": "HAS_SECTION",
+                    "description": f"Division {div['name']} contains section {sec['name']}"
+                }
+                self.graph["edges"].append(div_sec_edge)
+        
+        # Create edges from program to divisions
+        program_id = f"program_{program_name.lower().replace('-', '_')}"
+        for div in cst_analysis.get('divisions', []):
+            div_id = f"div_{div['name'].lower().replace('-', '_')}_{program_name.lower()}"
+            prog_div_edge = {
+                "from": program_id,
+                "to": div_id,
+                "type": "HAS_DIVISION",
+                "description": f"Program {program_name} contains division {div['name']}"
+            }
+            self.graph["edges"].append(prog_div_edge)
         
         # Add statement block nodes from CST analysis
         for block in cst_analysis.get('statement_blocks', []):
