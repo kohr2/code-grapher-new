@@ -759,6 +759,10 @@ class COBOLCSTParser:
             
             # If we have a current procedure, add statements to it
             if current_procedure:
+                # Skip empty lines - don't create statement nodes for them
+                if not line_clean.strip():
+                    continue
+                
                 # Determine statement type
                 stmt_type = 'UNKNOWN'
                 if 'IF' in line_clean.upper() and 'END-IF' not in line_clean.upper():
@@ -798,12 +802,131 @@ class COBOLCSTParser:
                 elif 'EXIT' in line_clean.upper():
                     stmt_type = 'EXIT'
                 
+                # Extract variables from the statement
+                variables_used = self._extract_variables_from_statement(line_clean, stmt_type)
+                
                 current_procedure['statements'].append({
                     'type': stmt_type,
-                    'content': line_clean
+                    'content': line_clean,
+                    'variables': variables_used
                 })
         
         return procedures
+    
+    def _extract_variables_from_statement(self, statement: str, stmt_type: str) -> List[str]:
+        """
+        Extract variable names from a COBOL statement
+        
+        Args:
+            statement: The COBOL statement text
+            stmt_type: The type of statement (IF, MOVE, ADD, etc.)
+            
+        Returns:
+            List of variable names found in the statement
+        """
+        variables = []
+        statement_upper = statement.upper()
+        
+        # Common COBOL keywords to filter out
+        cobol_keywords = {
+            'IF', 'THEN', 'ELSE', 'END-IF', 'PERFORM', 'UNTIL', 'VARYING',
+            'FROM', 'BY', 'TO', 'MOVE', 'ADD', 'SUBTRACT', 'COMPUTE',
+            'READ', 'WRITE', 'OPEN', 'CLOSE', 'DISPLAY', 'ACCEPT',
+            'STOP', 'RUN', 'EXIT', 'EVALUATE', 'WHEN', 'END-EVALUATE',
+            'STRING', 'UNSTRING', 'DELIMITED', 'BY', 'SIZE', 'INTO',
+            'FUNCTION', 'CURRENT-DATE', 'MOD', 'OR', 'AND', 'NOT'
+        }
+        
+        # Remove common COBOL keywords and operators to isolate variable names
+        # This is a simplified approach - in production, you'd use more sophisticated parsing
+        
+        # Handle different statement types
+        if stmt_type == 'IF':
+            # Extract variables from IF conditions
+            # Pattern: IF variable operator value
+            if_pattern = r'IF\s+([A-Z0-9-]+)'
+            matches = re.findall(if_pattern, statement_upper)
+            variables.extend(matches)
+            
+            # Also look for variables after operators
+            operator_pattern = r'([A-Z0-9-]+)\s*(>|<|=|NOT\s*=)\s*([A-Z0-9-]+)'
+            matches = re.findall(operator_pattern, statement_upper)
+            for match in matches:
+                variables.extend([match[0], match[2]])
+        
+        elif stmt_type == 'MOVE':
+            # Pattern: MOVE source TO destination
+            # Handle both literal and variable sources
+            move_pattern = r'MOVE\s+(?:\'[^\']*\'|\"[\"]*\"|([A-Z0-9-]+))\s+TO\s+([A-Z0-9-]+)'
+            matches = re.findall(move_pattern, statement_upper)
+            for match in matches:
+                # Only add non-empty matches (skip literals)
+                if match[0]:  # Source variable
+                    variables.append(match[0])
+                if match[1]:  # Destination variable
+                    variables.append(match[1])
+        
+        elif stmt_type in ['ADD', 'SUBTRACT']:
+            # Pattern: ADD/SUBTRACT value TO variable
+            add_pattern = r'(ADD|SUBTRACT)\s+([A-Z0-9-]+)\s+TO\s+([A-Z0-9-]+)'
+            matches = re.findall(add_pattern, statement_upper)
+            for match in matches:
+                variables.extend([match[1], match[2]])
+        
+        elif stmt_type == 'COMPUTE':
+            # Pattern: COMPUTE variable = expression
+            compute_pattern = r'COMPUTE\s+([A-Z0-9-]+)\s*='
+            matches = re.findall(compute_pattern, statement_upper)
+            variables.extend(matches)
+            
+            # Extract variables from the expression (after the = sign)
+            expr_part = statement_upper.split('=', 1)[1] if '=' in statement_upper else statement_upper
+            expr_vars = re.findall(r'\b([A-Z][A-Z0-9-]*)\b', expr_part)
+            variables.extend(expr_vars)
+        
+        elif stmt_type == 'READ':
+            # Pattern: READ file-name
+            read_pattern = r'READ\s+([A-Z0-9-]+)'
+            matches = re.findall(read_pattern, statement_upper)
+            variables.extend(matches)
+        
+        elif stmt_type == 'WRITE':
+            # Pattern: WRITE record-name
+            write_pattern = r'WRITE\s+([A-Z0-9-]+)'
+            matches = re.findall(write_pattern, statement_upper)
+            variables.extend(matches)
+        
+        else:
+            # Generic approach: find all uppercase words that look like variables
+            # Filter out common COBOL keywords
+            cobol_keywords = {
+                'IF', 'THEN', 'ELSE', 'END-IF', 'PERFORM', 'UNTIL', 'VARYING',
+                'FROM', 'BY', 'TO', 'MOVE', 'ADD', 'SUBTRACT', 'COMPUTE',
+                'READ', 'WRITE', 'OPEN', 'CLOSE', 'DISPLAY', 'ACCEPT',
+                'STOP', 'RUN', 'EXIT', 'EVALUATE', 'WHEN', 'END-EVALUATE',
+                'STRING', 'UNSTRING', 'DELIMITED', 'BY', 'SIZE', 'INTO',
+                'FUNCTION', 'CURRENT-DATE', 'MOD', 'OR', 'AND', 'NOT'
+            }
+            
+            potential_vars = re.findall(r'\b([A-Z][A-Z0-9-]*)\b', statement_upper)
+            for var in potential_vars:
+                if var not in cobol_keywords and len(var) > 1:
+                    variables.append(var)
+        
+        # Clean up and deduplicate
+        variables = list(set([var.strip() for var in variables if var.strip()]))
+        
+        # Filter out obvious non-variables (numbers, single characters, keywords, etc.)
+        filtered_vars = []
+        for var in variables:
+            if (len(var) > 1 and 
+                not var.isdigit() and 
+                not re.match(r'^[0-9]+$', var) and
+                not var in ['Y', 'N', 'X', 'Z'] and
+                not var in cobol_keywords):
+                filtered_vars.append(var)
+        
+        return filtered_vars
     
     def extract_statements(self, cst: Any) -> List[Dict[str, Any]]:
         """
