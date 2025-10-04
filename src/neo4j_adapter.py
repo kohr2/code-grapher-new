@@ -178,12 +178,12 @@ class Neo4jAdapter:
         # Create hierarchical relationships based on node type
         self._create_hierarchical_relationships(session, node_data, session_name)
         
-        # Only connect cobolprogram nodes to session, others use hierarchical relationships
-        if node_type == "cobol_program":
-            session.run("""
-                MATCH (n {id: $node_id}), (s:StacktalkSession {name: $session_name})
-                CREATE (s)-[:CONTAINS]->(n)
-            """, node_id=node_id, session_name=session_name)
+            # Only connect cobolprogram nodes to session, others use hierarchical relationships
+            if node_type == "cobol_program":
+                session.run("""
+                    MATCH (n {id: $node_id}), (s:StacktalkSession {name: $session_name})
+                    MERGE (s)-[:CONTAINS]->(n)
+                """, node_id=node_id, session_name=session_name)
     
     def _create_hierarchical_relationships(self, session, node_data: Dict[str, Any], session_name: str) -> None:
         """Create proper hierarchical relationships between COBOL elements"""
@@ -200,7 +200,7 @@ class Neo4jAdapter:
                 session.run("""
                     MATCH (proc:cobolprocedure {name: $proc_name, session: $session_name})
                     MATCH (stmt {id: $stmt_id})
-                    CREATE (proc)-[:HAS_STATEMENT]->(stmt)
+                    MERGE (proc)-[:HAS_STATEMENT]->(stmt)
                 """, proc_name=parent_procedure, session_name=session_name, stmt_id=node_id)
         
         # Connect variables to their parent programs and create variable hierarchy
@@ -209,16 +209,18 @@ class Neo4jAdapter:
             session.run("""
                 MATCH (prog:cobolprogram {session: $session_name})
                 MATCH (var {id: $var_id})
-                CREATE (prog)-[:HAS_VARIABLE]->(var)
+                MERGE (prog)-[:HAS_VARIABLE]->(var)
             """, session_name=session_name, var_id=node_id)
             
             # Create variable hierarchy (parent-child relationships)
             parent_name = data.get("parent")
-            if parent_name and parent_name.strip():
+            if parent_name and parent_name.strip() and parent_name != node_data.get("name", ""):
+                # Only create relationship if parent exists and is different from child
                 session.run("""
                     MATCH (parent:cobolvariable {name: $parent_name, session: $session_name})
                     MATCH (child {id: $child_id})
-                    CREATE (parent)-[:HAS_CHILD_VARIABLE]->(child)
+                    WHERE parent.id <> child.id
+                    MERGE (parent)-[:HAS_CHILD_VARIABLE]->(child)
                 """, parent_name=parent_name, session_name=session_name, child_id=node_id)
         
         # Connect procedures to their parent programs
@@ -227,7 +229,7 @@ class Neo4jAdapter:
             session.run("""
                 MATCH (prog:cobolprogram {session: $session_name})
                 MATCH (proc {id: $proc_id})
-                CREATE (prog)-[:HAS_PROCEDURE]->(proc)
+                MERGE (prog)-[:HAS_PROCEDURE]->(proc)
             """, session_name=session_name, proc_id=node_id)
         
         # Connect sections to their parent divisions
@@ -237,7 +239,7 @@ class Neo4jAdapter:
                 session.run("""
                     MATCH (div:coboldivision {name: $div_name, session: $session_name})
                     MATCH (sec {id: $sec_id})
-                    CREATE (div)-[:HAS_SECTION]->(sec)
+                    MERGE (div)-[:HAS_SECTION]->(sec)
                 """, div_name=parent_division, session_name=session_name, sec_id=node_id)
         
         # Connect divisions to their parent programs
@@ -245,7 +247,7 @@ class Neo4jAdapter:
             session.run("""
                 MATCH (prog:cobolprogram {session: $session_name})
                 MATCH (div {id: $div_id})
-                CREATE (prog)-[:HAS_DIVISION]->(div)
+                MERGE (prog)-[:HAS_DIVISION]->(div)
             """, session_name=session_name, div_id=node_id)
     
     def _create_edge(self, session, edge_data: Dict[str, Any], session_name: str) -> None:

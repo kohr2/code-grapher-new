@@ -224,6 +224,11 @@ def run_demo(rules_dir: str = "programs/test/rules", output_dir: str = "output",
         violations = detector.detect_violations(graph_gen.graph)
         violations_count = len(violations)
         
+        # Add violations as nodes to the graph
+        if violations:
+            graph_gen.add_violation_nodes(violations)
+            rprint(f"✅ Added {len(violations)} violation nodes to graph")
+        
         # Group violations by file
         violations_by_file = {}
         for violation in violations:
@@ -396,6 +401,11 @@ def analyze_cobol_file(cobol_file: str, rules_dir: str = "rules", output_dir: st
         detector = RuleDetector()
         violations = detector.detect_violations(graph_gen.graph)
         
+        # Add violations as nodes to the graph
+        if violations:
+            graph_gen.add_violation_nodes(violations)
+            rprint(f"✅ Added {len(violations)} violation nodes to graph")
+        
         if violations:
             rprint(f"❌ Found {len(violations)} policy violations:")
             violations_by_severity = {}
@@ -532,6 +542,11 @@ def analyze_cobol_file_with_rules(cobol_file: str, rules: List[Any], output_dir:
         from rule_detector import RuleDetector
         detector = RuleDetector()
         violations = detector.detect_violations(graph_gen.graph)
+        
+        # Add violations as nodes to the graph
+        if violations:
+            graph_gen.add_violation_nodes(violations)
+            rprint(f"✅ Added {len(violations)} violation nodes to graph")
         
         if violations:
             rprint(f"❌ Found {len(violations)} policy violations")

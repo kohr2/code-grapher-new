@@ -89,6 +89,9 @@ Use TDD approach : always write tests before creating new function or file
 - Establish relationships between code and rules
 - Support graph queries and analysis
 - Export to JSON for visualization
+- **Violation Node Creation**: Materialize violations as distinct graph nodes with rich metadata
+- **Relationship Mapping**: Create `VIOLATES_RULE` and `VIOLATES_ELEMENT` relationships
+- **Graph Analytics**: Enable complex violation analysis through graph traversal
 
 ### COBOL CST Parser (`src/cobol_cst_parser.py`)
 - Tree-sitter-based Concrete Syntax Tree parsing
@@ -102,6 +105,9 @@ Use TDD approach : always write tests before creating new function or file
 - Connect violations to specific code elements
 - Support multiple rule types and patterns
 - Provide detailed violation reports
+- **Violation Materialization**: Violations are materialized as distinct nodes in the graph
+- **Graph Integration**: Each violation becomes a first-class citizen with relationships to DSL rules and COBOL elements
+- **Rich Metadata**: Violations include severity, source location, affected elements, and business context
 
 ### COBOL Generator (`src/cobol_generator.py`)
 - Generate compliant COBOL examples from DSL using AI or templates
@@ -127,6 +133,9 @@ Use TDD approach : always write tests before creating new function or file
 - Connect every code element to applicable rules
 - Use graph traversal for violation detection
 - Maintain graph consistency throughout
+- **Violation Materialization**: Violations are materialized as distinct nodes in the graph
+- **Graph Analytics**: Enable complex queries and analysis through violation relationships
+- **First-Class Citizens**: Violations have the same status as rules and code elements
 
 ### 2. DSL Extensibility & Multi-Program Support
 - Design DSL to be easily extensible
@@ -239,3 +248,6 @@ Use TDD approach : always write tests before creating new function or file
 - AI-powered violation classification and remediation suggestions
 - Enhanced CST parsing with semantic analysis and business logic understanding
 - Integration with COBOL IDEs and development tools
+- **Violation Analytics**: Advanced graph queries for violation patterns and trends
+- **Violation Visualization**: Interactive violation graphs with severity-based coloring
+- **Violation Remediation**: AI-powered suggestions for fixing violations

@@ -331,6 +331,70 @@ class GraphGenerator:
         req_norm = req_name.upper().replace('-', '-')
         return proc_norm == req_norm or proc_norm in req_norm or req_norm in proc_norm
     
+    def add_violation_nodes(self, violations: List[Any]) -> None:
+        """
+        Add violation nodes to the graph
+        
+        Args:
+            violations: List of Violation objects from RuleDetector
+        """
+        for i, violation in enumerate(violations):
+            violation_id = f"violation_{i+1}_{violation.type}_{violation.requirement}"
+            
+            # Create violation node
+            violation_node = {
+                "id": violation_id,
+                "type": "violation",
+                "name": f"Violation: {violation.requirement}",
+                "description": violation.message,
+                "data": {
+                    "violation_type": violation.type,
+                    "severity": violation.severity,
+                    "requirement": violation.requirement,
+                    "code_element": violation.code_element,
+                    "source_file": violation.source_file,
+                    "line_number": violation.line_number,
+                    "dsl_rule": violation.dsl_rule,
+                    "context": violation.context or {}
+                }
+            }
+            
+            self.graph["nodes"].append(violation_node)
+            
+            # Create edge from violation to the DSL rule that was violated
+            if violation.dsl_rule:
+                rule_id = f"rule_{violation.dsl_rule.lower().replace(' ', '_')}"
+                violation_edge = {
+                    "from_node": violation_id,
+                    "to_node": rule_id,
+                    "type": "VIOLATES_RULE",
+                    "description": f"Violation violates rule: {violation.dsl_rule}"
+                }
+                self.graph["edges"].append(violation_edge)
+            
+            # Create edge from violation to the COBOL element that caused it
+            if violation.code_element:
+                # Find the COBOL element node
+                cobol_element_id = None
+                for node in self.graph["nodes"]:
+                    if (node["type"] in ["cobol_variable", "cobol_procedure"] and 
+                        node["name"] == violation.code_element):
+                        cobol_element_id = node["id"]
+                        break
+                
+                if cobol_element_id:
+                    element_edge = {
+                        "from_node": violation_id,
+                        "to_node": cobol_element_id,
+                        "type": "VIOLATES_ELEMENT",
+                        "description": f"Violation affects element: {violation.code_element}"
+                    }
+                    self.graph["edges"].append(element_edge)
+        
+        # Update metadata
+        self.graph["metadata"]["total_violations"] = len(violations)
+        self.graph["metadata"]["violations_count"] = len(violations)
+
     def detect_violations(self) -> List[Violation]:
         """
         Detect policy violations in the graph
