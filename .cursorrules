@@ -100,6 +100,8 @@ Use TDD approach : always write tests before creating new function or file
 - **Section Parsing**: CONFIGURATION, INPUT-OUTPUT, FILE sections with proper line number handling
 - **Procedure Analysis**: Sections and paragraphs within PROCEDURE DIVISION
 - **Statement Block Grouping**: Logical grouping of related statements (PERFORM, IF, EVALUATE blocks)
+- **Atomic Variable Parsing**: Most granular parsing with individual variables linked to statement blocks
+- **Variable-to-Block Linking**: Each variable connected to specific statement blocks where used
 - Hierarchical data structure parsing (01, 02, 03 level variables)
 - Support for multiple COBOL dialects and enterprise patterns
 - **Line Number Handling**: Proper parsing of COBOL files with line numbers (000100, 000200, etc.)
@@ -162,6 +164,8 @@ Use TDD approach : always write tests before creating new function or file
 - **Section-Level Analysis**: CONFIGURATION, INPUT-OUTPUT, FILE sections within divisions
 - **Procedure-Level Analysis**: Sections and paragraphs within PROCEDURE DIVISION
 - **Statement Block Analysis**: Group related statements into logical blocks (PERFORM, IF, EVALUATE)
+- **Atomic Variable Parsing**: Extract individual variables and link to statement blocks
+- **Variable-to-Block Relationships**: Create USED_IN_BLOCK relationships for fine-grained analysis
 - Extract hierarchical data relationships and semantic meaning
 - Support enterprise COBOL patterns and complex business logic
 - **Line Number Support**: Handle COBOL files with line numbers (000100, 000200, etc.)

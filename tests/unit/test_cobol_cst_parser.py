@@ -400,6 +400,134 @@ class TestCOBOLCSTParserIntegration(unittest.TestCase):
             
         except ImportError:
             self.skipTest("Module import failed due to previous test modifications")
+    
+    def test_atomic_variable_extraction(self):
+        """Test atomic variable extraction from statement blocks"""
+        try:
+            from src.cobol_cst_parser import COBOLCSTParser
+            
+            parser = COBOLCSTParser()
+            
+            # Skip if parser is not available
+            if not parser.tree_sitter_available:
+                self.skipTest("Tree-sitter not available")
+            
+            # Create sample procedures with statement blocks
+            sample_procedures = [
+                {
+                    'name': 'TEST-PROCEDURE',
+                    'type': 'section',
+                    'statement_blocks': [
+                        {
+                            'name': 'MOVE-BLOCK',
+                            'type': 'SEQUENTIAL',
+                            'variable_references': [
+                                {
+                                    'variable_name': 'WS-VAR1',
+                                    'statement_type': 'MOVE',
+                                    'statement_content': 'MOVE WS-VAR1 TO WS-VAR2',
+                                    'line_number': 100
+                                },
+                                {
+                                    'variable_name': 'WS-VAR2',
+                                    'statement_type': 'MOVE',
+                                    'statement_content': 'MOVE WS-VAR1 TO WS-VAR2',
+                                    'line_number': 100
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+            
+            # Test atomic variable extraction
+            atomic_vars = parser._extract_atomic_variables(sample_procedures)
+            
+            # Verify atomic variables are extracted
+            self.assertIsInstance(atomic_vars, list)
+            self.assertEqual(len(atomic_vars), 2)  # WS-VAR1 and WS-VAR2
+            
+            # Verify structure of atomic variables
+            for var in atomic_vars:
+                self.assertIn('name', var)
+                self.assertIn('references', var)
+                self.assertIn('parent_procedure', var)
+                self.assertIn('parent_procedure_type', var)
+                
+                # Verify references structure
+                for ref in var['references']:
+                    self.assertIn('statement_block_name', ref)
+                    self.assertIn('statement_block_type', ref)
+                    self.assertIn('statement_type', ref)
+                    self.assertIn('statement_content', ref)
+                    self.assertIn('line_number', ref)
+                    self.assertIn('parent_procedure', ref)
+            
+        except ImportError:
+            self.skipTest("Module import failed")
+    
+    def test_comprehensive_analysis_includes_atomic_variables(self):
+        """Test that comprehensive analysis includes atomic variables"""
+        try:
+            from src.cobol_cst_parser import COBOLCSTParser
+            
+            parser = COBOLCSTParser()
+            
+            # Skip if parser is not available
+            if not parser.tree_sitter_available:
+                self.skipTest("Tree-sitter not available")
+            
+            # Create a temporary COBOL file
+            cobol_file = self.temp_path / "test_atomic.cbl"
+            cobol_file.write_text("""
+000100 PROCEDURE DIVISION.
+000200 0000-MAIN.
+000300     MOVE WS-VAR1 TO WS-VAR2
+000400     PERFORM 1000-SUB
+000500     STOP RUN.
+""")
+            
+            # Run comprehensive analysis
+            result = parser.analyze_cobol_comprehensive(str(cobol_file))
+            
+            # Verify atomic variables are included
+            self.assertIn('atomic_variables', result)
+            self.assertIsInstance(result['atomic_variables'], list)
+            
+            # Verify statement blocks are included
+            self.assertIn('statement_blocks', result)
+            self.assertIsInstance(result['statement_blocks'], list)
+            
+        except ImportError:
+            self.skipTest("Module import failed")
+    
+    def test_variable_extraction_from_statements(self):
+        """Test variable extraction from individual statements"""
+        try:
+            from src.cobol_cst_parser import COBOLCSTParser
+            
+            parser = COBOLCSTParser()
+            
+            # Test different statement types
+            test_cases = [
+                ('MOVE WS-AMOUNT TO WS-RESULT', 'MOVE', ['WS-AMOUNT', 'WS-RESULT']),
+                ('PERFORM 1000-INITIALIZE', 'PERFORM', ['INITIALIZE']),
+                ('IF WS-SCORE > 50', 'IF', ['WS-SCORE']),
+                ('ADD WS-VALUE TO WS-TOTAL', 'ADD', ['WS-VALUE', 'WS-TOTAL']),
+            ]
+            
+            for statement, stmt_type, expected_vars in test_cases:
+                variables = parser._extract_variables_from_statement(statement, stmt_type)
+                
+                # Check that expected variables are found
+                for expected_var in expected_vars:
+                    self.assertTrue(
+                        any(expected_var in var for var in variables),
+                        f"Expected variable {expected_var} not found in {variables}"
+                    )
+            
+        except ImportError:
+            self.skipTest("Module import failed")
 
 
 if __name__ == '__main__':
