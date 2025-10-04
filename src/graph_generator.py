@@ -195,6 +195,25 @@ class GraphGenerator:
             }
             nodes.append(var_node)
         
+        # Add atomic variable nodes from statement blocks
+        for atomic_var in cst_analysis.get('atomic_variables', []):
+            atomic_var_node = {
+                "id": f"atomic_var_{atomic_var['name'].lower().replace('-', '_')}_{program_name.lower()}",
+                "type": "cobol_atomic_variable",
+                "name": atomic_var['name'],
+                "description": f"COBOL atomic variable: {atomic_var['name']}",
+                "source_file": program_name + ".cob",
+                "data": {
+                    "variable_name": atomic_var['name'],
+                    "references_count": len(atomic_var['references']),
+                    "parent_procedure": atomic_var['parent_procedure'],
+                    "parent_procedure_type": atomic_var['parent_procedure_type'],
+                    "references": atomic_var['references'],
+                    "parsing_method": "cst_atomic"
+                }
+            }
+            nodes.append(atomic_var_node)
+        
         # Add procedure nodes from CST analysis
         for proc in cst_analysis.get('procedures', []):
             proc_node = {
@@ -265,6 +284,27 @@ class GraphGenerator:
                 }
                 nodes.append(sec_node)
         
+        # Add statement block nodes from CST analysis
+        for block in cst_analysis.get('statement_blocks', []):
+            block_node = {
+                "id": f"block_{block['name'].lower().replace('-', '_')}_{program_name.lower()}",
+                "type": "cobol_statement_block",
+                "name": f"{block.get('parent_procedure', 'Unknown')}-{block.get('name', 'Block')}",
+                "description": f"COBOL statement block: {block.get('type', 'SEQUENTIAL')}",
+                "source_file": program_name + ".cob",
+                "data": {
+                    "block_type": block.get('type', 'SEQUENTIAL'),
+                    "block_name": block.get('name', 'Block'),
+                    "statements_count": len(block.get('statements', [])),
+                    "start_line": block.get('start_line', 0),
+                    "end_line": block.get('end_line', 0),
+                    "variables_used": block.get('variables_used', []),
+                    "parent_procedure": block.get('parent_procedure', 'Unknown'),
+                    "parsing_method": "cst"
+                }
+            }
+            nodes.append(block_node)
+        
         return nodes
     
     def connect_cobol_to_rules(self, cobol_nodes: List[Dict[str, Any]]) -> None:
@@ -285,6 +325,9 @@ class GraphGenerator:
             elif node["type"] == "cobol_procedure":
                 self._connect_procedure_to_rules(node)
         
+        # Connect atomic variables to statement blocks
+        self._connect_atomic_variables_to_blocks()
+        
         self.graph["metadata"]["cobol_programs_count"] += 1
     
     def _connect_variable_to_rules(self, var_node: Dict[str, Any]) -> None:
@@ -303,6 +346,33 @@ class GraphGenerator:
                         "description": f"COBOL variable {var_name} matches DSL variable {dsl_var_name}"
                     }
                     self.graph["edges"].append(edge)
+    
+    def _connect_atomic_variables_to_blocks(self) -> None:
+        """Connect atomic variables to their statement blocks"""
+        # Find all atomic variable nodes
+        atomic_vars = [node for node in self.graph["nodes"] if node["type"] == "cobol_atomic_variable"]
+        
+        # Find all statement block nodes
+        statement_blocks = [node for node in self.graph["nodes"] if node["type"] == "cobol_statement_block"]
+        
+        for atomic_var in atomic_vars:
+            var_name = atomic_var["name"]
+            var_references = atomic_var["data"].get("references", [])
+            
+            for ref in var_references:
+                block_name = ref["statement_block_name"]
+                
+                # Find matching statement block
+                for block in statement_blocks:
+                    if block["data"].get("block_name") == block_name:
+                        edge = {
+                            "from": atomic_var["id"],
+                            "to": block["id"],
+                            "type": "USED_IN_BLOCK",
+                            "description": f"Variable {var_name} used in {block_name} ({ref['statement_type']})"
+                        }
+                        self.graph["edges"].append(edge)
+                        break
     
     def _connect_procedure_to_rules(self, proc_node: Dict[str, Any]) -> None:
         """Connect COBOL procedure to applicable DSL rules"""

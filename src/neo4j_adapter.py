@@ -226,6 +226,20 @@ class Neo4jAdapter:
                     MERGE (parent)-[:HAS_CHILD_VARIABLE]->(child)
                 """, parent_name=parent_name, session_name=session_name, child_id=node_id)
         
+        # Connect atomic variables to their statement blocks
+        elif node_type == "cobol_atomic_variable":
+            # Connect atomic variables to statement blocks where they're used
+            references = data.get("references", [])
+            for ref in references:
+                block_name = ref.get("statement_block_name")
+                if block_name:
+                    session.run("""
+                        MATCH (block:cobolstatementblock {name: $block_name, session: $session_name})
+                        MATCH (var {id: $var_id})
+                        MERGE (var)-[:USED_IN_BLOCK {statement_type: $stmt_type, line_number: $line_num}]->(block)
+                    """, block_name=block_name, session_name=session_name, var_id=node_id, 
+                        stmt_type=ref.get("statement_type", ""), line_num=ref.get("line_number", 0))
+        
         # Connect procedures to their parent programs
         elif node_type == "cobol_procedure":
             # Find the program node from the same session and create HAS_PROCEDURE relationship

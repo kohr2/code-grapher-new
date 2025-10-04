@@ -929,9 +929,22 @@ class COBOLCSTParser:
         # Update block end line
         procedure['current_block']['end_line'] = line_num
         
-        # Add variables to block's variable set
+        # Add variables to block's variable set (atomic extraction)
         variables_used = self._extract_variables_from_statement(line_clean, stmt_type)
         procedure['current_block']['variables_used'].update(variables_used)
+        
+        # Store individual variable references for atomic linking
+        if 'variable_references' not in procedure['current_block']:
+            procedure['current_block']['variable_references'] = []
+        
+        # Add each variable as an individual reference
+        for var_name in variables_used:
+            procedure['current_block']['variable_references'].append({
+                'variable_name': var_name,
+                'statement_type': stmt_type,
+                'statement_content': line_clean,
+                'line_number': line_num
+            })
         
         # Check for block-ending patterns
         if stmt_type in ['END-IF', 'END-EVALUATE', 'STOP', 'EXIT']:
@@ -1234,6 +1247,7 @@ class COBOLCSTParser:
                 'file_sections': file_sections,
                 'copy_statements': copy_statements,
                 'statement_blocks': self._extract_statement_blocks(procedures),
+                'atomic_variables': self._extract_atomic_variables(procedures),
                 'parsing_method': 'cst',
                 'source_file': filepath
             }
@@ -1268,6 +1282,49 @@ class COBOLCSTParser:
                 all_blocks.append(block_with_context)
         
         return all_blocks
+    
+    def _extract_atomic_variables(self, procedures: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Extract all variables atomically from statement blocks
+        
+        Args:
+            procedures: List of procedure dictionaries
+            
+        Returns:
+            List of atomic variable dictionaries with references to statement blocks
+        """
+        atomic_variables = []
+        variable_tracker = {}  # Track unique variables across all blocks
+        
+        for proc in procedures:
+            for block in proc.get('statement_blocks', []):
+                for var_ref in block.get('variable_references', []):
+                    var_name = var_ref['variable_name']
+                    
+                    # Create or update atomic variable
+                    if var_name not in variable_tracker:
+                        variable_tracker[var_name] = {
+                            'name': var_name,
+                            'references': [],
+                            'parent_procedure': proc['name'],
+                            'parent_procedure_type': proc.get('type', 'procedure')
+                        }
+                    
+                    # Add reference to this statement block
+                    variable_tracker[var_name]['references'].append({
+                        'statement_block_name': block.get('name', 'Unknown'),
+                        'statement_block_type': block.get('type', 'SEQUENTIAL'),
+                        'statement_type': var_ref['statement_type'],
+                        'statement_content': var_ref['statement_content'],
+                        'line_number': var_ref['line_number'],
+                        'parent_procedure': proc['name']
+                    })
+        
+        # Convert to list format
+        for var_name, var_data in variable_tracker.items():
+            atomic_variables.append(var_data)
+        
+        return atomic_variables
 
 
 def main():
