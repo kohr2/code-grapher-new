@@ -34,10 +34,22 @@ stacktalk-demo/
 │   ├── rule_detector.py      # Rule violation detection
 │   ├── graph_generator.py    # Graph database operations
 │   └── report_generator.py   # HTML report generation
-├── rules/                     # DSL rule definitions
+├── rules/                     # Global DSL rule definitions
 │   ├── nsf_rule.dsl          # NSF banking rule
 │   └── dual_approval.dsl     # Dual approval rule
-├── examples/                  # Generated COBOL examples
+├── programs/                  # Program-specific directories
+│   ├── banking/              # Banking system programs
+│   │   ├── *.cbl             # COBOL programs
+│   │   ├── *.dsl             # Program-specific DSL rules
+│   │   └── rules/            # Local rules override
+│   ├── insurance/            # Insurance system programs
+│   │   ├── *.cbl             # COBOL programs
+│   │   ├── *.dsl             # Program-specific DSL rules
+│   │   └── rules/            # Local rules override
+│   └── healthcare/           # Healthcare system programs
+│       ├── *.cbl             # COBOL programs
+│       ├── *.dsl             # Program-specific DSL rules
+│       └── rules/            # Local rules override
 └── output/                    # Generated outputs
 ```
 
@@ -66,10 +78,13 @@ Use TDD approach : always write tests before creating new function or file
 ## Key Components
 
 ### DSL Parser (`src/dsl_parser.py`)
-- Parse YAML rule definitions
+- Parse YAML rule definitions from multiple sources (global, program-specific, local)
 - Validate rule structure and syntax
 - Convert rules to graph representation
 - Support rule inheritance and composition
+- **Multi-Source Rule Loading**: Global rules (`rules/`) + Program-specific rules (`programs/*/rules/`) + Local rules (`programs/*/`)
+- **Rule Precedence**: Local > Program-specific > Global rules
+- **Automatic Discovery**: Scan directory for `.dsl` files and load in precedence order
 
 ### Graph Generator (`src/graph_generator.py`)
 - Create nodes for programs, variables, procedures, rules
@@ -115,11 +130,15 @@ Use TDD approach : always write tests before creating new function or file
 - Use graph traversal for violation detection
 - Maintain graph consistency throughout
 
-### 2. DSL Extensibility
+### 2. DSL Extensibility & Multi-Program Support
 - Design DSL to be easily extensible
 - Support new rule types without code changes
 - Provide clear DSL documentation
 - Include validation and error messages
+- **Program-Specific Rules**: Each program directory can have its own DSL rules
+- **Rule Inheritance**: Local rules override program-specific rules, which override global rules
+- **Automatic Rule Discovery**: Scan directories for `.dsl` files and load in precedence order
+- **Multi-Program Analysis**: Process different programs with different rule sets in single run
 
 ### 3. CST-Based COBOL Parsing
 - Use Tree-sitter with COBOL grammar for comprehensive parsing
@@ -185,6 +204,8 @@ Use TDD approach : always write tests before creating new function or file
 - Support for multiple AI providers (OpenAI, Anthropic, local models)
 - Neo4j integration for enterprise graph database persistence
 - Tree-sitter COBOL grammar integration for comprehensive parsing
+- **Multi-Program Support**: Organize COBOL programs in domain-specific directories
+- **Rule Association**: Associate DSL rules with COBOL programs in same directory structure
 
 ## Neo4j Integration
 - Enterprise graph database persistence for large-scale deployment

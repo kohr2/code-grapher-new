@@ -284,6 +284,359 @@ def run_demo(rules_dir: str = "rules", output_dir: str = "output", examples_dir:
         sys.exit(1)
 
 
+def analyze_cobol_file(cobol_file: str, rules_dir: str = "rules", output_dir: str = "output") -> None:
+    """
+    Analyze a single COBOL file for policy violations
+    
+    Args:
+        cobol_file: Path to COBOL file to analyze
+        rules_dir: Path to DSL rules directory
+        output_dir: Path to output directory
+    """
+    rprint(f"\n[bold blue]🔍 Analyzing COBOL File: {cobol_file}[/bold blue]")
+    rprint("[bold blue]" + "="*60 + "[/bold blue]")
+    
+    # Validate COBOL file exists
+    cobol_path = Path(cobol_file)
+    if not cobol_path.exists():
+        rprint(f"[red]❌ COBOL file not found: {cobol_file}[/red]")
+        sys.exit(1)
+    
+    if not cobol_path.suffix.lower() in ['.cbl', '.cob', '.cobol']:
+        rprint(f"[yellow]⚠️ Warning: File doesn't have COBOL extension (.cbl, .cob, .cobol)[/yellow]")
+    
+    # Create output directory
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # Step 1: Parse DSL rules for this specific program
+        rprint("\n[yellow]📋 Step 1: Loading DSL rules...[/yellow]")
+        parser = DSLParser(rules_dir=rules_dir)
+        rules = parser.load_rules_for_program(cobol_file)
+        
+        if not rules:
+            rprint("[red]❌ No DSL rules found[/red]")
+            sys.exit(1)
+        
+        rprint(f"✅ Loaded {len(rules)} DSL rules")
+        for rule in rules:
+            rprint(f"   • {rule.name} ({rule.source} from {rule.source_path})")
+        
+        # Step 2: Initialize graph generator
+        rprint("\n[yellow]🔄 Step 2: Initializing graph generator...[/yellow]")
+        from graph_generator import GraphGenerator
+        graph_gen = GraphGenerator()
+        
+        # Check Neo4j status
+        if graph_gen.neo4j_available:
+            rprint("✅ Neo4j graph database: Available")
+        else:
+            rprint("⚠️ Neo4j graph database: Unavailable (using JSON fallback)")
+        
+        # Add DSL rules to graph
+        for rule in rules:
+            graph_gen.add_dsl_rule(rule)
+        
+        rprint(f"✅ Graph initialized with {len(graph_gen.graph['nodes'])} nodes")
+        
+        # Step 3: Parse COBOL file with CST parser
+        rprint(f"\n[yellow]🌳 Step 3: Parsing COBOL file with Tree-sitter CST...[/yellow]")
+        from cobol_cst_parser import COBOLCSTParser
+        cst_parser = COBOLCSTParser()
+        
+        try:
+            # Parse the COBOL file
+            cst_analysis = cst_parser.analyze_cobol_comprehensive(str(cobol_path))
+            rprint("✅ COBOL file parsed successfully with CST parser")
+            
+            # Extract program name from file or analysis
+            program_name = cst_analysis.get('program_info', {}).get('program_name', cobol_path.stem.upper())
+            
+            # Generate graph nodes from CST analysis
+            cobol_nodes = graph_gen.generate_cobol_nodes_from_cst(cst_analysis, program_name)
+            rprint(f"✅ Generated {len(cobol_nodes)} COBOL nodes from CST analysis")
+            
+        except Exception as cst_error:
+            rprint(f"[yellow]⚠️ CST parsing failed: {cst_error}[/yellow]")
+            rprint("   Falling back to basic file analysis...")
+            
+            # Fallback: read file content and do basic analysis
+            with open(cobol_path, 'r', encoding='utf-8', errors='ignore') as f:
+                cobol_content = f.read()
+            
+            # Create basic nodes for the COBOL file
+            program_name = cobol_path.stem.upper()
+            graph_gen.graph["nodes"].append({
+                "id": f"program_{program_name}",
+                "type": "cobol_program",
+                "name": program_name,
+                "description": f"COBOL Program: {program_name}",
+                "data": {
+                    "source_file": str(cobol_path),
+                    "file_size": len(cobol_content),
+                    "line_count": len(cobol_content.split('\n'))
+                }
+            })
+            rprint(f"✅ Created basic program node: {program_name}")
+        
+        # Step 4: Connect COBOL elements to DSL rules
+        rprint("\n[yellow]🔗 Step 4: Connecting COBOL elements to DSL rules...[/yellow]")
+        # Get all COBOL nodes from the graph
+        cobol_nodes = [node for node in graph_gen.graph["nodes"] if node["type"] in ["cobol_program", "cobol_variable", "cobol_procedure"]]
+        graph_gen.connect_cobol_to_rules(cobol_nodes)
+        rprint(f"✅ Connected {len(cobol_nodes)} COBOL elements to DSL rules")
+        
+        # Step 5: Detect violations
+        rprint("\n[yellow]🔍 Step 5: Detecting policy violations...[/yellow]")
+        from rule_detector import RuleDetector
+        detector = RuleDetector()
+        violations = detector.detect_violations(graph_gen.graph)
+        
+        if violations:
+            rprint(f"❌ Found {len(violations)} policy violations:")
+            violations_by_severity = {}
+            for violation in violations:
+                severity = violation.severity
+                if severity not in violations_by_severity:
+                    violations_by_severity[severity] = []
+                violations_by_severity[severity].append(violation)
+            
+            for severity, v_list in violations_by_severity.items():
+                rprint(f"   {severity.upper()}: {len(v_list)} violations")
+                for violation in v_list[:3]:  # Show first 3
+                    rprint(f"     • {violation.message}")
+                if len(v_list) > 3:
+                    rprint(f"     ... and {len(v_list) - 3} more")
+        else:
+            rprint("✅ No policy violations detected")
+        
+        # Step 6: Generate HTML report
+        rprint("\n[yellow]📊 Step 6: Generating HTML report...[/yellow]")
+        from report_generator import ReportGenerator
+        report_gen = ReportGenerator()
+        
+        try:
+            report_path = report_gen.generate_html_report(violations, graph_gen.graph, [cobol_path.name])
+            rprint(f"✅ Generated HTML report: {report_path}")
+        except Exception as e:
+            rprint(f"⚠️ Failed to generate report: {e}")
+        
+        # Step 7: Save analysis results
+        rprint("\n[yellow]💾 Step 7: Saving analysis results...[/yellow]")
+        
+        # Save to JSON for reference
+        graph_file = Path(output_dir) / f"{cobol_path.stem}_analysis.json"
+        graph_gen.save_graph(str(graph_file))
+        rprint(f"✅ Analysis results saved to JSON: {graph_file}")
+        
+        # Display final summary
+        rprint("\n[yellow]🎯 Analysis Complete![/yellow]")
+        rprint(f"📊 Graph Statistics: {len(graph_gen.graph['nodes'])} nodes, {len(graph_gen.graph['edges'])} edges")
+        rprint(f"📁 COBOL File: {cobol_file}")
+        rprint(f"📁 Output Directory: {output_dir}/")
+        rprint(f"🏦 DSL Rules: {len(rules)} rules applied")
+        
+        if violations:
+            rprint(f"❌ Violations Found: {len(violations)} policy violations detected")
+        else:
+            rprint("✅ Compliance Status: No violations detected")
+        
+    except Exception as e:
+        rprint(f"[red]❌ Analysis failed: {str(e)}[/red]")
+        sys.exit(1)
+
+
+def analyze_cobol_file_with_rules(cobol_file: str, rules: List[Any], output_dir: str = "output") -> None:
+    """
+    Analyze a COBOL file using pre-loaded DSL rules
+    
+    Args:
+        cobol_file: Path to COBOL file to analyze
+        rules: List of pre-loaded DSL rules
+        output_dir: Path to output directory
+    """
+    # Validate COBOL file exists
+    cobol_path = Path(cobol_file)
+    if not cobol_path.exists():
+        rprint(f"[red]❌ COBOL file not found: {cobol_file}[/red]")
+        return
+    
+    try:
+        # Step 1: Initialize graph generator
+        rprint("🔄 Initializing graph generator...")
+        from graph_generator import GraphGenerator
+        graph_gen = GraphGenerator()
+        
+        # Add DSL rules to graph
+        for rule in rules:
+            graph_gen.add_dsl_rule(rule)
+        
+        rprint(f"✅ Graph initialized with {len(graph_gen.graph['nodes'])} nodes")
+        
+        # Step 2: Parse COBOL file with CST parser
+        rprint("🌳 Parsing COBOL file with Tree-sitter CST...")
+        from cobol_cst_parser import COBOLCSTParser
+        cst_parser = COBOLCSTParser()
+        
+        try:
+            # Parse the COBOL file
+            cst_analysis = cst_parser.analyze_cobol_comprehensive(str(cobol_path))
+            rprint("✅ COBOL file parsed successfully with CST parser")
+            
+            # Extract program name from file or analysis
+            program_name = cst_analysis.get('program_info', {}).get('program_name', cobol_path.stem.upper())
+            
+            # Generate graph nodes from CST analysis
+            cobol_nodes = graph_gen.generate_cobol_nodes_from_cst(cst_analysis, program_name)
+            rprint(f"✅ Generated {len(cobol_nodes)} COBOL nodes from CST analysis")
+            
+        except Exception as cst_error:
+            rprint(f"[yellow]⚠️ CST parsing failed: {cst_error}[/yellow]")
+            rprint("   Falling back to basic file analysis...")
+            
+            # Fallback: read file content and do basic analysis
+            with open(cobol_path, 'r', encoding='utf-8', errors='ignore') as f:
+                cobol_content = f.read()
+            
+            # Create basic nodes for the COBOL file
+            program_name = cobol_path.stem.upper()
+            graph_gen.graph["nodes"].append({
+                "id": f"program_{program_name}",
+                "type": "cobol_program",
+                "name": program_name,
+                "description": f"COBOL Program: {program_name}",
+                "data": {
+                    "source_file": str(cobol_path),
+                    "file_size": len(cobol_content),
+                    "line_count": len(cobol_content.split('\n'))
+                }
+            })
+            rprint(f"✅ Created basic program node: {program_name}")
+        
+        # Step 3: Connect COBOL elements to DSL rules
+        rprint("🔗 Connecting COBOL elements to DSL rules...")
+        # Get all COBOL nodes from the graph
+        cobol_nodes = [node for node in graph_gen.graph["nodes"] if node["type"] in ["cobol_program", "cobol_variable", "cobol_procedure"]]
+        graph_gen.connect_cobol_to_rules(cobol_nodes)
+        rprint(f"✅ Connected {len(cobol_nodes)} COBOL elements to DSL rules")
+        
+        # Step 4: Detect violations
+        rprint("🔍 Detecting policy violations...")
+        from rule_detector import RuleDetector
+        detector = RuleDetector()
+        violations = detector.detect_violations(graph_gen.graph)
+        
+        if violations:
+            rprint(f"❌ Found {len(violations)} policy violations")
+        else:
+            rprint("✅ No policy violations detected")
+        
+        # Step 5: Generate HTML report
+        rprint("📊 Generating HTML report...")
+        from report_generator import ReportGenerator
+        report_gen = ReportGenerator()
+        
+        try:
+            report_path = report_gen.generate_html_report(violations, graph_gen.graph, [cobol_path.name])
+            rprint(f"✅ Generated HTML report: {report_path}")
+        except Exception as e:
+            rprint(f"⚠️ Failed to generate report: {e}")
+        
+        # Step 6: Save analysis results
+        rprint("💾 Saving analysis results...")
+        graph_file = Path(output_dir) / f"{cobol_path.stem}_analysis.json"
+        graph_gen.save_graph(str(graph_file))
+        rprint(f"✅ Analysis results saved: {graph_file}")
+        
+    except Exception as e:
+        rprint(f"[red]❌ Analysis failed: {str(e)}[/red]")
+
+
+def analyze_cobol_directory(cobol_dir: str, rules_dir: str = "rules", output_dir: str = "output") -> None:
+    """
+    Analyze all COBOL files in a directory
+    
+    Args:
+        cobol_dir: Path to directory containing COBOL files
+        rules_dir: Path to DSL rules directory
+        output_dir: Path to output directory
+    """
+    rprint(f"\n[bold blue]📁 Analyzing COBOL Directory: {cobol_dir}[/bold blue]")
+    rprint("[bold blue]" + "="*60 + "[/bold blue]")
+    
+    # Find all COBOL files
+    cobol_path = Path(cobol_dir)
+    if not cobol_path.exists():
+        rprint(f"[red]❌ Directory not found: {cobol_dir}[/red]")
+        sys.exit(1)
+    
+    cobol_extensions = ['.cbl', '.cob', '.cobol']
+    cobol_files = []
+    
+    for ext in cobol_extensions:
+        cobol_files.extend(cobol_path.glob(f"*{ext}"))
+        cobol_files.extend(cobol_path.glob(f"*{ext.upper()}"))
+    
+    if not cobol_files:
+        rprint(f"[red]❌ No COBOL files found in {cobol_dir}[/red]")
+        rprint("   Looking for files with extensions: .cbl, .cob, .cobol")
+        sys.exit(1)
+    
+    rprint(f"📋 Found {len(cobol_files)} COBOL files:")
+    for cobol_file in cobol_files:
+        rprint(f"   • {cobol_file.name}")
+    
+    # Create batch output directory
+    batch_output = Path(output_dir) / f"batch_{cobol_path.name}"
+    batch_output.mkdir(parents=True, exist_ok=True)
+    
+    # Load DSL rules for this directory
+    rprint("\n[yellow]📋 Loading DSL rules for directory...[/yellow]")
+    parser = DSLParser(rules_dir=rules_dir)
+    rules = parser.load_rules_for_program(cobol_dir)
+    
+    if not rules:
+        rprint("[red]❌ No DSL rules found[/red]")
+        sys.exit(1)
+    
+    rprint(f"✅ Loaded {len(rules)} DSL rules")
+    for rule in rules:
+        rprint(f"   • {rule.name} ({rule.source} from {rule.source_path})")
+    
+    all_violations = []
+    successful_analyses = 0
+    
+    # Analyze each file
+    for i, cobol_file in enumerate(cobol_files, 1):
+        rprint(f"\n[yellow]📄 Analyzing file {i}/{len(cobol_files)}: {cobol_file.name}[/yellow]")
+        
+        try:
+            # Create individual output directory for this file
+            file_output = batch_output / cobol_file.stem
+            file_output.mkdir(parents=True, exist_ok=True)
+            
+            # Analyze the file with the already loaded rules
+            analyze_cobol_file_with_rules(str(cobol_file), rules, str(file_output))
+            successful_analyses += 1
+            
+            # Collect violations for summary
+            # Note: This is a simplified approach - in a full implementation,
+            # we'd collect violations from each analysis
+            
+        except Exception as e:
+            rprint(f"[red]❌ Failed to analyze {cobol_file.name}: {e}[/red]")
+            continue
+    
+    # Display batch summary
+    rprint(f"\n[yellow]🎯 Batch Analysis Complete![/yellow]")
+    rprint(f"📊 Files Processed: {successful_analyses}/{len(cobol_files)}")
+    rprint(f"📁 Output Directory: {batch_output}/")
+    
+    if successful_analyses == 0:
+        rprint("[red]❌ No files were successfully analyzed[/red]")
+        sys.exit(1)
+
+
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(
@@ -291,16 +644,20 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python main.py --validate          # Validate DSL files only
-  python main.py --demo              # Run full demo
-  python main.py --preview           # Show demo preview
-  python main.py                     # Run full demo (default)
+  python main.py --validate                    # Validate DSL files only
+  python main.py --demo                        # Run full demo
+  python main.py --preview                     # Show demo preview
+  python main.py --analyze-file program.cbl    # Analyze single COBOL file
+  python main.py --analyze-dir /path/to/cobol  # Analyze all COBOL files in directory
+  python main.py                               # Run full demo (default)
         """
     )
     
     parser.add_argument('--validate', action='store_true', help='Validate DSL files only')
     parser.add_argument('--demo', action='store_true', help='Run full demo')
     parser.add_argument('--preview', action='store_true', help='Show demo preview')
+    parser.add_argument('--analyze-file', type=str, metavar='COBOL_FILE', help='Analyze single COBOL file')
+    parser.add_argument('--analyze-dir', type=str, metavar='COBOL_DIR', help='Analyze all COBOL files in directory')
     parser.add_argument('--rules-dir', type=str, default='rules', help='Rules directory path')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory path')
     parser.add_argument('--examples-dir', type=str, default='examples', help='Examples directory path')
@@ -313,6 +670,12 @@ Examples:
         sys.exit(0 if success else 1)
     elif args.preview:
         demo_preview()
+        sys.exit(0)
+    elif args.analyze_file:
+        analyze_cobol_file(args.analyze_file, rules_dir=args.rules_dir, output_dir=args.output_dir)
+        sys.exit(0)
+    elif args.analyze_dir:
+        analyze_cobol_directory(args.analyze_dir, rules_dir=args.rules_dir, output_dir=args.output_dir)
         sys.exit(0)
     elif args.demo or len(sys.argv) == 1:  # Default when no args
         run_demo(rules_dir=args.rules_dir, output_dir=args.output_dir, examples_dir=args.examples_dir)

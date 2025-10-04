@@ -1,0 +1,73 @@
+      * BANKING WITHDRAWAL PROGRAM
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. WITHDRAWAL.
+       AUTHOR. BANKING SYSTEM.
+       DATE-WRITTEN. 2024-01-01.
+       
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       
+       01  ACCOUNT-DATA.
+           02  ACCOUNT-NUMBER       PIC X(10).
+           02  ACCOUNT-BALANCE      PIC 9(8)V99.
+           02  ACCOUNT-STATUS       PIC X(1).
+               88  ACTIVE-ACCOUNT   VALUE 'A'.
+               88  FROZEN-ACCOUNT   VALUE 'F'.
+       
+       01  TRANSACTION-DATA.
+           02  TRANSACTION-AMOUNT   PIC 9(8)V99.
+           02  TRANSACTION-DATE     PIC 9(8).
+           02  NSF-FLAG             PIC X(1) VALUE 'N'.
+               88  NSF-OCCURRED     VALUE 'Y'.
+               88  NO-NSF           VALUE 'N'.
+       
+       01  VALIDATION-FLAGS.
+           02  AMOUNT-VALID         PIC X(1) VALUE 'N'.
+               88  VALID-AMOUNT     VALUE 'Y'.
+           02  BALANCE-SUFFICIENT   PIC X(1) VALUE 'N'.
+               88  SUFFICIENT-FUNDS VALUE 'Y'.
+       
+       PROCEDURE DIVISION.
+       
+       MAIN-PROCEDURE.
+           PERFORM INITIALIZE-PROGRAM
+           PERFORM VALIDATE-WITHDRAWAL
+           PERFORM PROCESS-WITHDRAWAL
+           PERFORM FINALIZE-TRANSACTION
+           STOP RUN.
+       
+       INITIALIZE-PROGRAM.
+           MOVE 'N' TO NSF-FLAG
+           MOVE 'N' TO AMOUNT-VALID
+           MOVE 'N' TO BALANCE-SUFFICIENT
+           DISPLAY 'WITHDRAWAL PROGRAM INITIALIZED'.
+       
+       VALIDATE-WITHDRAWAL.
+           IF TRANSACTION-AMOUNT > 0
+               MOVE 'Y' TO AMOUNT-VALID
+               DISPLAY 'AMOUNT VALIDATION PASSED'
+           ELSE
+               DISPLAY 'ERROR: INVALID WITHDRAWAL AMOUNT'
+               MOVE 'N' TO AMOUNT-VALID
+           END-IF.
+       
+       PROCESS-WITHDRAWAL.
+           IF VALID-AMOUNT
+               IF ACCOUNT-BALANCE >= TRANSACTION-AMOUNT
+                   MOVE 'Y' TO BALANCE-SUFFICIENT
+                   SUBTRACT TRANSACTION-AMOUNT FROM ACCOUNT-BALANCE
+                   DISPLAY 'WITHDRAWAL PROCESSED SUCCESSFULLY'
+               ELSE
+                   MOVE 'Y' TO NSF-FLAG
+                   DISPLAY 'ERROR: INSUFFICIENT FUNDS - NSF OCCURRED'
+               END-IF
+           ELSE
+               DISPLAY 'ERROR: INVALID TRANSACTION AMOUNT'
+           END-IF.
+       
+       FINALIZE-TRANSACTION.
+           IF NSF-OCCURRED
+               DISPLAY 'NSF FEE APPLIED'
+               DISPLAY 'NSF LOGGED FOR AUDIT'
+           END-IF
+           DISPLAY 'TRANSACTION COMPLETED'.

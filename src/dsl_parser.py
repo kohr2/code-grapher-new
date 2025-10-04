@@ -50,6 +50,8 @@ class DSLRule:
     requirements: List[DSLRequirement]
     compliant_logic: Dict[str, List[str]]
     violation_examples: Dict[str, Dict[str, Any]]
+    source: str = "global"  # "global", "program-specific", "local"
+    source_path: str = ""   # Full path to the DSL file
 
 
 class DSLError(Exception):
@@ -68,11 +70,12 @@ class DSLValidationError(DSLError):
 
 
 class DSLParser:
-    """Parser for YAML DSL rule files"""
+    """Parser for YAML DSL rule files with multi-source support"""
     
-    def __init__(self, rules_dir: str = "rules"):
+    def __init__(self, rules_dir: str = "rules", program_dir: Optional[str] = None):
         self.rules_dir = Path(rules_dir)
         self.rules_dir.mkdir(parents=True, exist_ok=True)
+        self.program_dir = Path(program_dir) if program_dir else None
         self.loaded_rules: Dict[str, DSLRule] = {}
     
     def load_rule_file(self, filename: str) -> DSLRule:
@@ -270,6 +273,210 @@ class DSLParser:
             raise DSLValidationError(error_msg)
         
         return rules
+    
+    def load_rules_for_program(self, program_path: str) -> List[DSLRule]:
+        """
+        Load DSL rules for a specific program with precedence:
+        1. Global rules (rules/*.dsl)
+        2. Program-specific rules (programs/domain/rules/*.dsl)  
+        3. Local rules (programs/domain/*.dsl)
+        
+        Args:
+            program_path: Path to the program directory or COBOL file
+            
+        Returns:
+            List[DSLRule]: List of parsed rule objects in precedence order
+            
+        Raises:
+            DSLLocationError: If no rules found
+            DSLValidationError: If any DSL file is invalid
+        """
+        program_path = Path(program_path)
+        
+        # Determine program directory
+        if program_path.is_file():
+            program_dir = program_path.parent
+        else:
+            program_dir = program_path
+        
+        all_rules = []
+        rule_sources = []
+        
+        # 1. Load global rules (lowest precedence)
+        try:
+            global_rules = self.load_all_rules()
+            for rule in global_rules:
+                rule.source = "global"
+                rule.source_path = str(self.rules_dir / f"{rule.name.lower().replace(' ', '_')}.dsl")
+            all_rules.extend(global_rules)
+            rule_sources.extend([(rule.name, "global") for rule in global_rules])
+        except DSLLocationError:
+            pass  # No global rules found, continue
+        
+        # 2. Load program-specific rules (medium precedence)
+        program_rules_dir = program_dir / "rules"
+        if program_rules_dir.exists():
+            try:
+                program_rules = self._load_rules_from_directory(program_rules_dir, "program-specific")
+                all_rules.extend(program_rules)
+                rule_sources.extend([(rule.name, "program-specific") for rule in program_rules])
+            except DSLLocationError:
+                pass  # No program-specific rules found, continue
+        
+        # 3. Load local rules (highest precedence)
+        try:
+            local_rules = self._load_rules_from_directory(program_dir, "local")
+            all_rules.extend(local_rules)
+            rule_sources.extend([(rule.name, "local") for rule in local_rules])
+        except DSLLocationError:
+            pass  # No local rules found, continue
+        
+        if not all_rules:
+            raise DSLLocationError(f"No DSL rules found for program → {program_path}")
+        
+        # Apply precedence: local > program-specific > global
+        final_rules = self._apply_rule_precedence(all_rules)
+        
+        return final_rules
+    
+    def _load_rules_from_directory(self, directory: Path, source_type: str) -> List[DSLRule]:
+        """
+        Load all DSL rules from a specific directory
+        
+        Args:
+            directory: Directory to search for .dsl files
+            source_type: Type of rules ("global", "program-specific", "local")
+            
+        Returns:
+            List[DSLRule]: List of parsed rule objects
+            
+        Raises:
+            DSLLocationError: If no DSL files found
+            DSLValidationError: If any DSL file is invalid
+        """
+        if not directory.exists():
+            raise DSLLocationError(f"Directory not found → {directory}")
+        
+        dsl_files = list(directory.glob('*.dsl'))
+        if not dsl_files:
+            raise DSLLocationError(f"No DSL files found in → {directory}")
+        
+        rules = []
+        errors = []
+        
+        for dsl_file in dsl_files:
+            try:
+                rule = self._load_rule_from_path(dsl_file, source_type)
+                rules.append(rule)
+            except Exception as e:
+                errors.append(f"Failed to load rule file → {dsl_file}: {str(e)}")
+        
+        if not rules and errors:
+            error_msg = "\n".join(errors)
+            raise DSLValidationError(error_msg)
+        
+        return rules
+    
+    def _load_rule_from_path(self, file_path: Path, source_type: str) -> DSLRule:
+        """
+        Load and parse a DSL rule from a specific file path
+        
+        Args:
+            file_path: Full path to the DSL file
+            source_type: Type of rule ("global", "program-specific", "local")
+            
+        Returns:
+            DSLRule: Parsed rule object
+            
+        Raises:
+            DSLValidationError: If file content is invalid
+        """
+        if not file_path.exists():
+            raise DSLValidationError(f"DSL file not found → {file_path}")
+        
+        if not file_path.suffix == '.dsl':
+            raise DSLError(f"Invalid DSL filename → {file_path}, must be *.dsl")
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                root = yaml.load(f, Loader=yaml.Loader)
+        except Exception as e:
+            raise DSLValidationError(f"YAML parsing error → {file_path}: {str(e)}")
+        
+        # Validate required sections exist
+        required_sections = ['rule', 'variables', 'conditions', 'requirements', 
+                           'compliant_logic', 'violation_examples']
+        missing = [req for req in required_sections if req not in root]
+        if missing:
+            raise DSLValidationError(f"Missing required DSL sections → {file_path}: {missing}")
+        
+        # Parse variables
+        variables = []
+        for var_data in root['variables']:
+            if not isinstance(var_data, dict):
+                raise DSLValidationError(f"Invalid variable data → {file_path}: {var_data}")
+            variables.append(self._parse_variable(var_data, str(file_path)))
+        
+        # Parse conditions
+        conditions = []
+        for name, cond_data in root['conditions'].items():
+            if not isinstance(cond_data, dict):
+                raise DSLValidationError(f"Invalid condition data → {file_path}: {name}")
+            conditions.append(self._parse_condition(name, cond_data, str(file_path)))
+        
+        # Parse requirements
+        requirements = []
+        for name, req_data in root['requirements'].items():
+            if not isinstance(req_data, dict):
+                raise DSLValidationError(f"Invalid requirement data → {file_path}: {name}")
+            requirements.append(self._parse_requirement(name, req_data, str(file_path)))
+        
+        # Build rule object
+        rule_info = root['rule']
+        rule = DSLRule(
+            name=rule_info['name'],
+            description=rule_info.get('description', ''),
+            variables=variables,
+            conditions=conditions,
+            requirements=requirements,
+            compliant_logic=root['compliant_logic'],
+            violation_examples=root['violation_examples'],
+            source=source_type,
+            source_path=str(file_path)
+        )
+        
+        # Validate rule completeness
+        self._validate_rule(rule, str(file_path))
+        
+        return rule
+    
+    def _apply_rule_precedence(self, all_rules: List[DSLRule]) -> List[DSLRule]:
+        """
+        Apply rule precedence: local > program-specific > global
+        
+        Args:
+            all_rules: List of all loaded rules
+            
+        Returns:
+            List[DSLRule]: Final rules with precedence applied
+        """
+        # Group rules by name
+        rule_groups = {}
+        for rule in all_rules:
+            if rule.name not in rule_groups:
+                rule_groups[rule.name] = []
+            rule_groups[rule.name].append(rule)
+        
+        final_rules = []
+        
+        # For each rule name, select the highest precedence version
+        for rule_name, rules in rule_groups.items():
+            # Sort by precedence: local > program-specific > global
+            precedence_order = {"local": 3, "program-specific": 2, "global": 1}
+            selected_rule = max(rules, key=lambda r: precedence_order.get(r.source, 0))
+            final_rules.append(selected_rule)
+        
+        return final_rules
     
     def load_lesson_file(self, filepath: str) -> DSLRule:
         """

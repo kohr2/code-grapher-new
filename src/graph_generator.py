@@ -408,6 +408,204 @@ class GraphGenerator:
             logger.error(f"Failed to get Neo4j performance metrics: {e}")
             return None
     
+    def export_neo4j_visualization(self, session_name: str, output_dir: str = "output") -> Optional[str]:
+        """
+        Export Neo4j Browser visualization files
+        
+        Args:
+            session_name: Name of the session to export
+            output_dir: Directory to save visualization files
+            
+        Returns:
+            Path to the exported Cypher file if successful, None otherwise
+        """
+        if not self.neo4j_available:
+            logger.warning("Neo4j not available for visualization export")
+            return None
+        
+        try:
+            # Create output directory
+            Path(output_dir).mkdir(parents=True, exist_ok=True)
+            
+            # Export visualization queries
+            cypher_file = Path(output_dir) / f"neo4j_visualization_{session_name}.cypher"
+            exported_file = self.neo4j_adapter.export_visualization_cypher(session_name, str(cypher_file))
+            
+            logger.info(f"Neo4j visualization exported to: {exported_file}")
+            return exported_file
+            
+        except Exception as e:
+            logger.error(f"Failed to export Neo4j visualization: {e}")
+            return None
+    
+    def generate_neo4j_setup_guide(self, output_dir: str = "output") -> str:
+        """
+        Generate Neo4j setup and visualization guide
+        
+        Args:
+            output_dir: Directory to save the guide
+            
+        Returns:
+            Path to the generated guide file
+        """
+        guide_content = """# Neo4j Setup and Visualization Guide for Stacktalk
+
+## Prerequisites
+
+1. **Neo4j Desktop Installation**
+   - Download Neo4j Desktop from: https://neo4j.com/download/
+   - Install and create a new database
+   - Start the database (default port: 7687)
+
+2. **Environment Configuration**
+   Create a `.env` file in your project root:
+   ```
+   NEO4J_URI=bolt://localhost:7687
+   NEO4J_USER=neo4j
+   NEO4J_PASSWORD=your_password_here
+   NEO4J_DATABASE=neo4j
+   ```
+
+## Setup Steps
+
+### 1. Install Neo4j Python Driver
+```bash
+pip install neo4j
+```
+
+### 2. Start Neo4j Database
+- Open Neo4j Desktop
+- Create a new project
+- Create a new database (name: "stacktalk")
+- Start the database
+- Note the password you set
+
+### 3. Configure Stacktalk
+Update your `.env` file with the correct credentials:
+```
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_actual_password
+NEO4J_DATABASE=stacktalk
+```
+
+### 4. Test Connection
+```bash
+python -c "from src.neo4j_adapter import Neo4jAdapter; adapter = Neo4jAdapter(); print('✅ Connected!' if adapter.is_available() else '❌ Connection failed')"
+```
+
+## Visualization in Neo4j Browser
+
+### 1. Access Neo4j Browser
+- Open your web browser
+- Navigate to: http://localhost:7474
+- Login with your credentials
+
+### 2. Load Visualization Queries
+After running Stacktalk analysis, you'll find a `.cypher` file in your output directory.
+Copy and paste the queries from this file into Neo4j Browser.
+
+### 3. Recommended Visualization Settings
+
+#### Node Colors (in Neo4j Browser):
+- **DSLRule**: Red (#FF6B6B)
+- **DSLVariable**: Teal (#4ECDC4)
+- **DSLRequirement**: Blue (#45B7D1)
+- **COBOLProgram**: Green (#96CEB4)
+- **COBOLVariable**: Yellow (#FFEAA7)
+- **COBOLProcedure**: Plum (#DDA0DD)
+- **Violation**: Coral (#FF7675)
+
+#### Relationship Colors:
+- **HAS_VARIABLE**: Light Blue (#74B9FF)
+- **IMPLEMENTS_REQUIREMENT**: Green (#00B894)
+- **VIOLATED_BY**: Orange (#E17055)
+- **CONTAINS**: Purple (#6C5CE7)
+
+#### Layout Settings:
+- Layout: Force Directed
+- Node Size: Degree (shows importance)
+- Edge Thickness: Based on relationship strength
+
+### 4. Useful Queries
+
+#### View All Data:
+```cypher
+MATCH (n) RETURN n LIMIT 100
+```
+
+#### Find Violations:
+```cypher
+MATCH (v:Violation)-[:VIOLATED_BY]->(rule:DSLRule)
+RETURN v, rule
+```
+
+#### Explore COBOL Structure:
+```cypher
+MATCH (prog:COBOLProgram)-[:HAS_VARIABLE]->(var:COBOLVariable)
+RETURN prog, var
+```
+
+## Troubleshooting
+
+### Connection Issues
+1. Ensure Neo4j Desktop is running
+2. Check the database is started
+3. Verify credentials in `.env` file
+4. Test connection with: `python src/neo4j_adapter.py --test`
+
+### No Data Visible
+1. Run Stacktalk analysis first: `python main.py --analyze-file your_file.cbl`
+2. Check that Neo4j export was successful
+3. Verify session name matches in queries
+
+### Performance Issues
+1. Use LIMIT clauses in queries for large datasets
+2. Create indexes on frequently queried properties
+3. Use EXPLAIN/PROFILE to optimize queries
+
+## Advanced Features
+
+### Custom Queries
+You can write custom Cypher queries to explore specific aspects:
+
+```cypher
+// Find all variables that violate NSF requirements
+MATCH (rule:DSLRule {name: "NSF Banking Rule"})-[:HAS_VARIABLE]->(dslVar:DSLVariable)
+MATCH (cobolVar:COBOLVariable)-[:VIOLATED_BY]->(violation:Violation)-[:VIOLATED_BY]->(rule)
+RETURN dslVar, violation, cobolVar
+```
+
+### Graph Analytics
+Use Neo4j's built-in algorithms for advanced analysis:
+
+```cypher
+// PageRank to find most important nodes
+CALL gds.pageRank.stream('myGraph')
+YIELD nodeId, score
+RETURN gds.util.asNode(nodeId).name AS name, score
+ORDER BY score DESC
+```
+
+## Support
+
+For issues or questions:
+1. Check Neo4j documentation: https://neo4j.com/docs/
+2. Review Stacktalk logs for error messages
+3. Test individual components with the CLI tools
+
+Happy analyzing! 🚀
+"""
+        
+        # Create output directory and save guide
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        guide_file = Path(output_dir) / "NEO4J_SETUP_GUIDE.md"
+        
+        with open(guide_file, 'w', encoding='utf-8') as f:
+            f.write(guide_content)
+        
+        return str(guide_file)
+    
     def load_graph(self, filepath: str) -> Dict[str, Any]:
         """
         Load graph from JSON file

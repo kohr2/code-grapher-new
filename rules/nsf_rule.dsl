@@ -69,7 +69,8 @@ compliant_logic:
     - "END-IF"
 
 violation_examples:
-  - description: "Missing NSF-FLAG variable"
+  missing_nsf_flag:
+    description: "Missing NSF-FLAG variable"
     code: |
       IDENTIFICATION DIVISION.
       PROGRAM-ID. BAD-NSF-PROCESSING.
@@ -80,7 +81,8 @@ violation_examples:
       MAIN-PROCEDURE.
           DISPLAY 'Processing transaction'.
       STOP RUN.
-  - description: "Missing NSF fee logic"
+  missing_nsf_fee_logic:
+    description: "Missing NSF fee logic"
     code: |
       IDENTIFICATION DIVISION.
       PROGRAM-ID. INCOMPLETE-NSF-PROCESSING.

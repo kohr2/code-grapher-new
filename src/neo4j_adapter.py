@@ -151,10 +151,18 @@ class Neo4jAdapter:
             "session": session_name
         }
         
-        # Add additional data properties
+        # Add additional data properties (flatten complex structures)
         if "data" in node_data:
             for key, value in node_data["data"].items():
-                properties[key] = value
+                # Handle nested dictionaries by converting to JSON string
+                if isinstance(value, dict):
+                    properties[key] = json.dumps(value)
+                # Handle lists by converting to JSON string
+                elif isinstance(value, list):
+                    properties[key] = json.dumps(value)
+                # Handle primitive types directly
+                else:
+                    properties[key] = value
         
         # Create node with appropriate labels
         labels = [node_type.replace("_", "")]  # Clean label names
@@ -317,6 +325,146 @@ class Neo4jAdapter:
         except Exception as e:
             print(f"❌ Failed to clear Neo4j session: {e}")
             return False
+    
+    def generate_visualization_queries(self, session_name: str = "default") -> Dict[str, str]:
+        """
+        Generate Cypher queries for Neo4j Browser visualization
+        
+        Args:
+            session_name: Name of the session to visualize
+            
+        Returns:
+            Dictionary of visualization queries
+        """
+        queries = {
+            "overview": f"""
+                // Stacktalk Graph Overview - {session_name}
+                MATCH (n)
+                WHERE n.session = '{session_name}'
+                RETURN n, labels(n) as nodeType
+                ORDER BY labels(n), n.name
+            """,
+            
+            "dsl_rules": f"""
+                // DSL Rules and Components
+                MATCH (rule:DSLRule)-[:HAS_VARIABLE]->(var:DSLVariable)
+                WHERE rule.session = '{session_name}'
+                RETURN rule, var
+                ORDER BY rule.name, var.name
+            """,
+            
+            "cobol_programs": f"""
+                // COBOL Programs and Structure
+                MATCH (prog:COBOLProgram)-[:HAS_VARIABLE]->(var:COBOLVariable)
+                WHERE prog.session = '{session_name}'
+                RETURN prog, var
+                ORDER BY prog.name, var.name
+            """,
+            
+            "violations": f"""
+                // Policy Violations and Connections
+                MATCH (rule:DSLRule)-[:VIOLATED_BY]->(violation:Violation)-[:IN_PROGRAM]->(prog:COBOLProgram)
+                WHERE rule.session = '{session_name}'
+                RETURN rule, violation, prog
+                ORDER BY violation.severity, rule.name
+            """,
+            
+            "connections": f"""
+                // All Connections Between DSL and COBOL
+                MATCH (dsl)-[r]-(cobol)
+                WHERE dsl.session = '{session_name}' AND cobol.session = '{session_name}'
+                AND ('DSLRule' IN labels(dsl) OR 'DSLVariable' IN labels(dsl) OR 'DSLRequirement' IN labels(dsl))
+                AND ('COBOLProgram' IN labels(cobol) OR 'COBOLVariable' IN labels(cobol) OR 'COBOLProcedure' IN labels(cobol))
+                RETURN dsl, r, cobol
+                ORDER BY type(r), dsl.name
+            """,
+            
+            "compliance_summary": f"""
+                // Compliance Summary
+                MATCH (session:StacktalkSession {{name: '{session_name}'}})
+                OPTIONAL MATCH (violation:Violation)-[:IN_SESSION]->(session)
+                OPTIONAL MATCH (rule:DSLRule)-[:IN_SESSION]->(session)
+                OPTIONAL MATCH (prog:COBOLProgram)-[:IN_SESSION]->(session)
+                RETURN 
+                    session.name as sessionName,
+                    count(DISTINCT rule) as totalRules,
+                    count(DISTINCT prog) as totalPrograms,
+                    count(DISTINCT violation) as totalViolations,
+                    session.created_at as createdAt
+            """
+        }
+        
+        return queries
+    
+    def export_visualization_cypher(self, session_name: str = "default", output_file: Optional[str] = None) -> str:
+        """
+        Export visualization queries to a Cypher file for Neo4j Browser
+        
+        Args:
+            session_name: Name of the session to export
+            output_file: Optional output file path
+            
+        Returns:
+            Path to the exported Cypher file
+        """
+        if output_file is None:
+            from pathlib import Path
+            output_file = f"neo4j_visualization_{session_name}.cypher"
+        
+        queries = self.generate_visualization_queries(session_name)
+        
+        cypher_content = f"""// Stacktalk Graph Visualization Queries
+// Session: {session_name}
+// Generated: {self._get_current_timestamp()}
+// 
+// Instructions:
+// 1. Open Neo4j Browser (http://localhost:7474)
+// 2. Copy and paste each query below
+// 3. Execute queries to explore the graph
+//
+
+"""
+        
+        for query_name, query in queries.items():
+            cypher_content += f"""// {query_name.upper().replace('_', ' ')} QUERY
+{query.strip()}
+
+"""
+        
+        # Add styling and layout instructions
+        cypher_content += """
+// VISUALIZATION STYLING
+// Apply these settings in Neo4j Browser for better visualization:
+
+// Node Colors:
+// - DSLRule: #FF6B6B (Red)
+// - DSLVariable: #4ECDC4 (Teal)  
+// - DSLRequirement: #45B7D1 (Blue)
+// - COBOLProgram: #96CEB4 (Green)
+// - COBOLVariable: #FFEAA7 (Yellow)
+// - COBOLProcedure: #DDA0DD (Plum)
+// - Violation: #FF7675 (Coral)
+
+// Relationship Colors:
+// - HAS_VARIABLE: #74B9FF (Light Blue)
+// - IMPLEMENTS_REQUIREMENT: #00B894 (Green)
+// - VIOLATED_BY: #E17055 (Orange)
+// - CONTAINS: #6C5CE7 (Purple)
+
+// Layout: Use "Force Directed" layout for best results
+// Node Size: Set to "Degree" for importance visualization
+"""
+        
+        # Write to file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(cypher_content)
+        
+        return output_file
+    
+    def _get_current_timestamp(self) -> str:
+        """Get current timestamp for file headers"""
+        from datetime import datetime
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     def close(self) -> None:
         """Close Neo4j driver connection"""

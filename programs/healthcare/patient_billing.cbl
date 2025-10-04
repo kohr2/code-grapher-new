@@ -1,0 +1,72 @@
+      * HEALTHCARE PATIENT BILLING PROGRAM
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. PATIENT-BILL.
+       AUTHOR. HEALTHCARE SYSTEM.
+       DATE-WRITTEN. 2024-01-01.
+       
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       
+       01  PATIENT-DATA.
+           02  PATIENT-ID           PIC X(10).
+           02  PATIENT-NAME         PIC X(50).
+           02  INSURANCE-ID         PIC X(10).
+           02  COPAY-AMOUNT         PIC 9(5)V99.
+       
+       01  BILLING-DATA.
+           02  SERVICE-CODE         PIC X(5).
+           02  SERVICE-AMOUNT       PIC 9(6)V99.
+           02  INSURANCE-COVERAGE   PIC 9(6)V99.
+           02  PATIENT-RESPONSIBILITY PIC 9(6)V99.
+       
+       01  HIPAA-FLAGS.
+           02  PHI-AUTHORIZED       PIC X(1) VALUE 'N'.
+               88  PHI-AUTHORIZED   VALUE 'Y'.
+               88  PHI-NOT-AUTH     VALUE 'N'.
+           02  AUDIT-LOGGED         PIC X(1) VALUE 'N'.
+               88  AUDIT-COMPLETE   VALUE 'Y'.
+               88  AUDIT-MISSING    VALUE 'N'.
+       
+       PROCEDURE DIVISION.
+       
+       MAIN-PROCEDURE.
+           PERFORM INITIALIZE-BILLING
+           PERFORM VALIDATE-PATIENT
+           PERFORM CHECK-HIPAA-COMPLIANCE
+           PERFORM CALCULATE-BILLING
+           PERFORM FINALIZE-BILLING
+           STOP RUN.
+       
+       INITIALIZE-BILLING.
+           MOVE 'N' TO PHI-AUTHORIZED
+           MOVE 'N' TO AUDIT-LOGGED
+           DISPLAY 'PATIENT BILLING INITIALIZED'.
+       
+       VALIDATE-PATIENT.
+           IF PATIENT-ID IS NOT EQUAL TO SPACES
+               DISPLAY 'PATIENT VALIDATION PASSED'
+           ELSE
+               DISPLAY 'ERROR: INVALID PATIENT ID'
+           END-IF.
+       
+       CHECK-HIPAA-COMPLIANCE.
+           * HIPAA compliance check
+           MOVE 'Y' TO PHI-AUTHORIZED
+           MOVE 'Y' TO AUDIT-LOGGED
+           DISPLAY 'HIPAA COMPLIANCE VERIFIED'.
+       
+       CALCULATE-BILLING.
+           IF PHI-AUTHORIZED
+               SUBTRACT INSURANCE-COVERAGE FROM SERVICE-AMOUNT
+                   GIVING PATIENT-RESPONSIBILITY
+               DISPLAY 'BILLING CALCULATED'
+           ELSE
+               DISPLAY 'ERROR: HIPAA AUTHORIZATION REQUIRED'
+           END-IF.
+       
+       FINALIZE-BILLING.
+           IF AUDIT-COMPLETE
+               DISPLAY 'BILLING PROCESSING COMPLETED'
+           ELSE
+               DISPLAY 'ERROR: AUDIT LOGGING REQUIRED'
+           END-IF.

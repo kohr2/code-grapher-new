@@ -85,13 +85,28 @@ python main.py
 ```
 
 This will:
-1. ✅ Parse DSL rules from `rules/*.dsl` files
+1. ✅ Parse DSL rules from `rules/*.dsl` files (global rules)
 2. ✅ Generate graph from DSL rules (variables, requirements, logic)
 3. ✅ **Generate AI-powered COBOL** examples using OpenAI (if API key available)
 4. ✅ **Parse COBOL code with Tree-sitter CST** into graph (programs, variables, procedures, hierarchical structures)
 5. ✅ Connect every code element to applicable DSL rules
 6. ✅ Analyze graph for policy violations
 7. ✅ Generate HTML report
+
+## Step 4b: Analyze Your Own COBOL Programs (2 minutes)
+
+```bash
+# Analyze a single COBOL file with global rules
+python main.py --analyze-file programs/banking/withdrawal.cbl
+
+# Analyze all COBOL files in a directory with their associated DSL rules
+python main.py --analyze-dir programs/banking/
+
+# This automatically discovers and loads:
+# 1. Global rules from rules/*.dsl
+# 2. Program-specific rules from programs/banking/rules/*.dsl  
+# 3. Local rules from programs/banking/*.dsl
+```
 
 ## Step 5: View Results (1 minute)
 
@@ -131,20 +146,28 @@ Open `output/report.html` to see:
 ## Step 6: Customize Rules (1 minute)
 
 ```bash
-# Modify NSF rule
+# Modify global NSF rule
 vim rules/nsf_rule.dsl
 
-# Run with your changes
-python main.py
+# Create program-specific rules for banking system
+mkdir -p programs/banking/rules/
+vim programs/banking/rules/banking_compliance.dsl
+
+# Create local rules for specific program
+vim programs/banking/withdrawal_rules.dsl
+
+# Run with your changes (rule precedence: local > program-specific > global)
+python main.py --analyze-dir programs/banking/
 
 # View graph data
-cat output/graph.json
+cat output/batch_banking/graph.json
 
 # Graph shows comprehensive connections:
 # - DSL Rule nodes → Variable nodes → Requirement nodes
 # - COBOL Program nodes → Variable nodes → Procedure nodes  
 # - Code variables connected to DSL rule variables
 # - Violations linked to specific code elements and rules
+# - Rule source tracking (global/program-specific/local)
 ```
 
 ## What Stacktalk Detects
@@ -234,7 +257,7 @@ stacktalk-demo/
 ├── main.py                    # Main orchestration script
 ├── requirements.txt           # Python dependencies
 ├── .env                       # OpenAI API key (OPENAI_KEY=xxx)
-├── .gitignore                 # Excludes .env, output/, examples/
+├── .gitignore                 # Excludes .env, output/, programs/
 ├── src/                       # Source modules
 │   ├── dsl_parser.py         # DSL rule parsing & validation
 │   ├── cobol_generator.py    # API-powered COBOL generation
@@ -242,12 +265,22 @@ stacktalk-demo/
 │   ├── rule_detector.py      # Rule violation detection
 │   ├── graph_generator.py    # Graph database operations
 │   └── report_generator.py   # HTML report generation
-├── rules/                     # DSL rule definitions
+├── rules/                     # Global DSL rule definitions
 │   ├── nsf_rule.dsl          # NSF banking rule
 │   └── dual_approval.dsl     # Dual approval rule
-├── examples/                  # Generated COBOL examples (AI-powered)
-│   ├── compliant.cob         # Enterprise-grade compliant logic
-│   └── violation.cob         # Sophisticated violation scenarios
+├── programs/                  # Program-specific directories
+│   ├── banking/              # Banking system programs
+│   │   ├── *.cbl             # COBOL programs
+│   │   ├── *.dsl             # Program-specific DSL rules
+│   │   └── rules/            # Local rules override
+│   ├── insurance/            # Insurance system programs
+│   │   ├── *.cbl             # COBOL programs
+│   │   ├── *.dsl             # Program-specific DSL rules
+│   │   └── rules/            # Local rules override
+│   └── healthcare/           # Healthcare system programs
+│       ├── *.cbl             # COBOL programs
+│       ├── *.dsl             # Program-specific DSL rules
+│       └── rules/            # Local rules override
 └── output/                    # Generated outputs
     ├── graph.json            # Graph representation
     └── report.html           # Compliance report
@@ -267,6 +300,9 @@ stacktalk-demo/
 ✅ rules/nsf_rule.dsl     - NSF banking rule definition
 ✅ rules/dual_approval.dsl - Dual approval rule definition
 ✅ requirements.txt       - Python dependencies (✅ exists)
+✅ programs/banking/      - Banking system programs directory
+✅ programs/insurance/    - Insurance system programs directory
+✅ programs/healthcare/   - Healthcare system programs directory
 ```
 
 **Current Status**: Only `requirements.txt` exists. Create the other files using the modular architecture described above.
@@ -278,6 +314,8 @@ stacktalk-demo/
 - ✅ See violations detected from DSL rules  
 - ✅ View graph data in `output/graph.json`
 - ✅ Modify `rules/*.dsl` files and see changes
+- ✅ Analyze COBOL files with `python main.py --analyze-file programs/banking/withdrawal.cbl`
+- ✅ Process multiple programs with `python main.py --analyze-dir programs/banking/`
 
 **Current Status**: This is a **template/blueprint**. You need to implement the actual code files based on the architecture described.
 
@@ -288,6 +326,8 @@ stacktalk-demo/
 ✅ **AI-Powered**: OpenI-generated enterprise-grade COBOL with domain expertise
 ✅ **CST-Parsed**: Tree-sitter-based comprehensive COBOL parsing with hierarchical structure
 ✅ **Modular**: Independent components with API integration
+✅ **Multi-Program**: Each program directory can have its own DSL rules
+✅ **Rule Inheritance**: Local > Program-specific > Global rule precedence
 ✅ **Business-Friendly**: Non-technical users can modify rules
 ✅ **Comprehensive**: Every code element connected to applicable DSL rules
 ✅ **Intelligent**: Sophisticated violation detection that passes cursory review
