@@ -95,11 +95,12 @@ def demo_preview() -> None:
     rprint("\n[yellow]📁 Output Files:[/yellow]")
     rprint("  • output/graph.json (Complete graph representation)")
     rprint("  • output/report.html (Audit-ready violation report)")
-    rprint("  • examples/compliant.cob (Compliant COBOL examples)")
-    rprint("  • examples/violation.cob (Violation COBOL examples)")
+    rprint("  • programs/test/rules/nsf_rule.dsl (Test DSL rule)")
+    rprint("  • programs/test/compliant.cob (Compliant COBOL examples)")
+    rprint("  • programs/test/violation.cob (Violation COBOL examples)")
 
 
-def run_demo(rules_dir: str = "rules", output_dir: str = "output", examples_dir: str = "examples") -> None:
+def run_demo(rules_dir: str = "programs/test/rules", output_dir: str = "output", examples_dir: str = "programs/test") -> None:
     """
     Run the complete Stacktalk MVP demo
     
@@ -249,11 +250,11 @@ def run_demo(rules_dir: str = "rules", output_dir: str = "output", examples_dir:
         
         try:
             cobol_files = [f.name for f in generated_files]
-            report_path = report_gen.generate_html_report(violations, graph_gen.graph, cobol_files)
-            rprint(f"✅ Generated HTML report: {report_path}")
+            report_path = report_gen.generate_text_report(violations, graph_gen.graph, cobol_files)
+            rprint(f"✅ Generated text report: {report_path}")
         except Exception as e:
             rprint(f"⚠️ Failed to generate report: {e}")
-            rprint("✅ Generated HTML report")
+            rprint("✅ Generated text report")
         
         # Save graph to file and Neo4j
         graph_file = Path(output_dir) / "graph.json"
@@ -410,14 +411,14 @@ def analyze_cobol_file(cobol_file: str, rules_dir: str = "rules", output_dir: st
         else:
             rprint("✅ No policy violations detected")
         
-        # Step 6: Generate HTML report
-        rprint("\n[yellow]📊 Step 6: Generating HTML report...[/yellow]")
+        # Step 6: Generate text report
+        rprint("\n[yellow]📊 Step 6: Generating text report...[/yellow]")
         from report_generator import ReportGenerator
         report_gen = ReportGenerator()
         
         try:
-            report_path = report_gen.generate_html_report(violations, graph_gen.graph, [cobol_path.name])
-            rprint(f"✅ Generated HTML report: {report_path}")
+            report_path = report_gen.generate_text_report(violations, graph_gen.graph, [cobol_path.name])
+            rprint(f"✅ Generated text report: {report_path}")
         except Exception as e:
             rprint(f"⚠️ Failed to generate report: {e}")
         
@@ -531,14 +532,14 @@ def analyze_cobol_file_with_rules(cobol_file: str, rules: List[Any], output_dir:
         else:
             rprint("✅ No policy violations detected")
         
-        # Step 5: Generate HTML report
-        rprint("📊 Generating HTML report...")
+        # Step 5: Generate text report
+        rprint("📊 Generating text report...")
         from report_generator import ReportGenerator
         report_gen = ReportGenerator()
         
         try:
-            report_path = report_gen.generate_html_report(violations, graph_gen.graph, [cobol_path.name])
-            rprint(f"✅ Generated HTML report: {report_path}")
+            report_path = report_gen.generate_text_report(violations, graph_gen.graph, [cobol_path.name])
+            rprint(f"✅ Generated text report: {report_path}")
         except Exception as e:
             rprint(f"⚠️ Failed to generate report: {e}")
         
@@ -658,9 +659,9 @@ Examples:
     parser.add_argument('--preview', action='store_true', help='Show demo preview')
     parser.add_argument('--analyze-file', type=str, metavar='COBOL_FILE', help='Analyze single COBOL file')
     parser.add_argument('--analyze-dir', type=str, metavar='COBOL_DIR', help='Analyze all COBOL files in directory')
-    parser.add_argument('--rules-dir', type=str, default='rules', help='Rules directory path')
+    parser.add_argument('--rules-dir', type=str, default='programs/test/rules', help='Rules directory path')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory path')
-    parser.add_argument('--examples-dir', type=str, default='examples', help='Examples directory path')
+    parser.add_argument('--examples-dir', type=str, default='programs/test', help='Examples directory path')
     
     args = parser.parse_args()
     

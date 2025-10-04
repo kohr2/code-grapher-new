@@ -70,6 +70,11 @@ class ReportGenerator:
         for violation in violations:
             severity_counts[violation.severity] += 1
         
+        # Ensure all severity levels are present
+        for severity in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']:
+            if severity not in severity_counts:
+                severity_counts[severity] = 0
+        
         # Files affected
         files_affected = list(set(v.source_file for v in violations if v.source_file))
         
@@ -210,6 +215,11 @@ class ReportGenerator:
         for violation in violations:
             severity_distribution[violation.severity] += 1
         
+        # Ensure all severity levels are present
+        for severity in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']:
+            if severity not in severity_distribution:
+                severity_distribution[severity] = 0
+        
         # Priority actions
         priority_actions = []
         if severity_distribution["HIGH"] > 0:
@@ -254,6 +264,114 @@ class ReportGenerator:
             highlighted = highlighted.replace(keyword, f"<strong>{keyword}</strong>")
         
         return highlighted
+
+    def generate_text_report(self, violations: List[Violation], 
+                           graph: Dict[str, Any], 
+                           cobol_files: List[str],
+                           ai_generated: bool = False) -> Path:
+        """Generate plain text compliance report"""
+        
+        # Generate report components
+        executive_summary = self.generate_executive_summary(violations, graph)
+        violation_details = self.generate_violation_details(violations)
+        compliance_metrics = self.generate_compliance_metrics(violations, graph)
+        
+        # Create text content
+        text_content = self._create_text_content(
+            executive_summary, violation_details, 
+            compliance_metrics, cobol_files, ai_generated
+        )
+        
+        # Save to file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_file = self.output_dir / f"compliance_report_{timestamp}.txt"
+        
+        with open(report_file, 'w', encoding='utf-8') as f:
+            f.write(text_content)
+            
+        return report_file
+
+    def _create_text_content(self, executive_summary: Dict[str, Any], 
+                           violation_details: Dict[str, Any],
+                           compliance_metrics: Dict[str, Any],
+                           cobol_files: List[str], 
+                           ai_generated: bool) -> str:
+        """Create plain text report content"""
+        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        content = f"""STACKTALK COMPLIANCE REPORT
+=====================================
+Generated: {timestamp}
+
+EXECUTIVE SUMMARY
+================
+{executive_summary['executive_summary']}
+
+Risk Assessment: {executive_summary['risk_assessment']}
+Total Violations: {executive_summary['total_violations']}
+Critical Issues: {executive_summary['severity_breakdown']['CRITICAL']}
+High Priority Issues: {executive_summary['severity_breakdown']['HIGH']}
+Medium Priority Issues: {executive_summary['severity_breakdown']['MEDIUM']}
+Low Priority Issues: {executive_summary['severity_breakdown']['LOW']}
+
+Key Recommendations:
+{chr(10).join(f"• {rec}" for rec in executive_summary['recommendations'])}
+
+COMPLIANCE METRICS
+=================
+Compliance Score: {compliance_metrics['overall_compliance_score']}%
+Violations by Severity:
+  - CRITICAL: {compliance_metrics['severity_distribution']['CRITICAL']}
+  - HIGH: {compliance_metrics['severity_distribution']['HIGH']}
+  - MEDIUM: {compliance_metrics['severity_distribution']['MEDIUM']}
+  - LOW: {compliance_metrics['severity_distribution']['LOW']}
+
+Priority Actions:
+{chr(10).join(f"• {action}" for action in compliance_metrics['priority_actions'])}
+
+Improvement Areas:
+{chr(10).join(f"• {area}" for area in compliance_metrics['improvement_areas'])}
+
+ANALYZED FILES
+==============
+{chr(10).join(f"• {file}" for file in cobol_files)}
+
+VIOLATION DETAILS
+================
+"""
+        
+        # Add violation details
+        if violation_details['violations']:
+            for violation in violation_details['violations']:
+                content += f"""
+Severity: {violation['severity']}
+Type: {violation['type']}
+Message: {violation['message']}
+Policy: {violation['dsl_rule']}
+File: {violation['source_file']}
+Line: {violation['line_number']}
+---
+"""
+        else:
+            content += "No violations found.\n"
+        
+        # Add AI generation note if applicable
+        if ai_generated:
+            content += f"""
+AI GENERATION
+=============
+This report includes AI-generated COBOL examples for demonstration purposes.
+Generated examples showcase both compliant and non-compliant code patterns.
+"""
+        
+        content += f"""
+=====================================
+End of Report
+Generated by Stacktalk Compliance Analysis System
+"""
+        
+        return content
 
     def generate_html_report(self, violations: List[Violation], 
                            graph: Dict[str, Any], 

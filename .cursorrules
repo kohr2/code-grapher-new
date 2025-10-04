@@ -33,23 +33,17 @@ stacktalk-demo/
 │   ├── cobol_cst_parser.py   # Tree-sitter CST-based COBOL parsing
 │   ├── rule_detector.py      # Rule violation detection
 │   ├── graph_generator.py    # Graph database operations
-│   └── report_generator.py   # HTML report generation
+│   └── report_generator.py   # Text report generation
 ├── rules/                     # Global DSL rule definitions
-│   ├── nsf_rule.dsl          # NSF banking rule
-│   └── dual_approval.dsl     # Dual approval rule
+│   └── global_fraud_management.dsl
 ├── programs/                  # Program-specific directories
-│   ├── banking/              # Banking system programs
-│   │   ├── *.cbl             # COBOL programs
-│   │   ├── *.dsl             # Program-specific DSL rules
-│   │   └── rules/            # Local rules override
-│   ├── insurance/            # Insurance system programs
-│   │   ├── *.cbl             # COBOL programs
-│   │   ├── *.dsl             # Program-specific DSL rules
-│   │   └── rules/            # Local rules override
-│   └── healthcare/           # Healthcare system programs
-│       ├── *.cbl             # COBOL programs
-│       ├── *.dsl             # Program-specific DSL rules
-│       └── rules/            # Local rules override
+│   ├── banking/              # Example: Banking system programs
+│   │   ├── rules/            # DSL rules (program-specific + local)
+│   │   └── *.cbl             # COBOL programs
+│   ├── test/                 # Test/demo programs
+│   │   ├── rules/            # Test DSL rules
+│   │   └── *.cob             # Generated examples
+│   └── ...                   # Other domains (insurance, healthcare, vasu, etc.)
 └── output/                    # Generated outputs
 ```
 
@@ -82,9 +76,13 @@ Use TDD approach : always write tests before creating new function or file
 - Validate rule structure and syntax
 - Convert rules to graph representation
 - Support rule inheritance and composition
-- **Multi-Source Rule Loading**: Global rules (`rules/`) + Program-specific rules (`programs/*/rules/`) + Local rules (`programs/*/`)
+- **Multi-Source Rule Loading**: 
+  - Global rules (`rules/*.dsl`) - Base rules for all programs
+  - Program-specific rules (`programs/*/rules/*.dsl`) - Domain-specific rules
+  - Local rules (`programs/*/*.dsl`) - Program-specific overrides
 - **Rule Precedence**: Local > Program-specific > Global rules
 - **Automatic Discovery**: Scan directory for `.dsl` files and load in precedence order
+- **Consistent Structure**: All program directories follow same pattern with `rules/` subdirectory
 
 ### Graph Generator (`src/graph_generator.py`)
 - Create nodes for programs, variables, procedures, rules
@@ -135,10 +133,14 @@ Use TDD approach : always write tests before creating new function or file
 - Support new rule types without code changes
 - Provide clear DSL documentation
 - Include validation and error messages
-- **Program-Specific Rules**: Each program directory can have its own DSL rules
+- **Consistent Directory Structure**: All program directories follow the same pattern:
+  - `programs/{domain}/rules/*.dsl` - Program-specific rules
+  - `programs/{domain}/*.dsl` - Local rules (highest precedence)
+  - `programs/{domain}/*.cbl` - COBOL programs
 - **Rule Inheritance**: Local rules override program-specific rules, which override global rules
 - **Automatic Rule Discovery**: Scan directories for `.dsl` files and load in precedence order
 - **Multi-Program Analysis**: Process different programs with different rule sets in single run
+- **Test/Demo Support**: Dedicated `programs/test/` directory for testing and demonstrations
 
 ### 3. CST-Based COBOL Parsing
 - Use Tree-sitter with COBOL grammar for comprehensive parsing

@@ -91,7 +91,7 @@ This will:
 4. ✅ **Parse COBOL code with Tree-sitter CST** into graph (programs, variables, procedures, hierarchical structures)
 5. ✅ Connect every code element to applicable DSL rules
 6. ✅ Analyze graph for policy violations
-7. ✅ Generate HTML report
+7. ✅ Generate text report
 
 ## Step 4b: Analyze Your Own COBOL Programs (2 minutes)
 
@@ -264,7 +264,7 @@ stacktalk-demo/
 │   ├── cobol_cst_parser.py   # Tree-sitter CST-based COBOL parsing
 │   ├── rule_detector.py      # Rule violation detection
 │   ├── graph_generator.py    # Graph database operations
-│   └── report_generator.py   # HTML report generation
+│   └── report_generator.py   # Text report generation
 ├── rules/                     # Global DSL rule definitions
 │   ├── nsf_rule.dsl          # NSF banking rule
 │   └── dual_approval.dsl     # Dual approval rule
@@ -296,7 +296,7 @@ stacktalk-demo/
 ✅ src/cobol_cst_parser.py - Tree-sitter CST-based COBOL parsing
 ✅ src/rule_detector.py   - Rule violation detection
 ✅ src/graph_generator.py - Graph database operations
-✅ src/report_generator.py - HTML report generation
+✅ src/report_generator.py - Text report generation
 ✅ rules/nsf_rule.dsl     - NSF banking rule definition
 ✅ rules/dual_approval.dsl - Dual approval rule definition
 ✅ requirements.txt       - Python dependencies (✅ exists)
