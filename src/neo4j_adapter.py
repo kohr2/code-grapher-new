@@ -226,8 +226,8 @@ class Neo4jAdapter:
                     MERGE (parent)-[:HAS_CHILD_VARIABLE]->(child)
                 """, parent_name=parent_name, session_name=session_name, child_id=node_id)
         
-        # Connect atomic variables to their statement blocks
-        elif node_type == "cobol_atomic_variable":
+        # Connect atomic variables to their statement blocks (cobol_variable with atomic parsing)
+        elif node_type == "cobol_variable" and data.get("parsing_method") == "cst_atomic":
             # Connect atomic variables to statement blocks where they're used
             references = data.get("references", [])
             for ref in references:

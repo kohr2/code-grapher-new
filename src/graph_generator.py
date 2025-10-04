@@ -195,13 +195,13 @@ class GraphGenerator:
             }
             nodes.append(var_node)
         
-        # Add atomic variable nodes from statement blocks
+        # Add atomic variable nodes as cobol_variable nodes from statement blocks
         for atomic_var in cst_analysis.get('atomic_variables', []):
             atomic_var_node = {
-                "id": f"atomic_var_{atomic_var['name'].lower().replace('-', '_')}_{program_name.lower()}",
-                "type": "cobol_atomic_variable",
+                "id": f"var_{atomic_var['name'].lower().replace('-', '_')}_{program_name.lower()}",
+                "type": "cobol_variable",
                 "name": atomic_var['name'],
-                "description": f"COBOL atomic variable: {atomic_var['name']}",
+                "description": f"COBOL variable: {atomic_var['name']}",
                 "source_file": program_name + ".cob",
                 "data": {
                     "variable_name": atomic_var['name'],
@@ -349,8 +349,10 @@ class GraphGenerator:
     
     def _connect_atomic_variables_to_blocks(self) -> None:
         """Connect atomic variables to their statement blocks"""
-        # Find all atomic variable nodes
-        atomic_vars = [node for node in self.graph["nodes"] if node["type"] == "cobol_atomic_variable"]
+        # Find all cobol_variable nodes that have atomic parsing data (references)
+        atomic_vars = [node for node in self.graph["nodes"] 
+                      if node["type"] == "cobol_variable" and 
+                      node["data"].get("parsing_method") == "cst_atomic"]
         
         # Find all statement block nodes
         statement_blocks = [node for node in self.graph["nodes"] if node["type"] == "cobol_statement_block"]
